@@ -27,9 +27,28 @@
   --sack-top: calc(var(--frame-y) - var(--sack-h));
 }
 
+/* What the seven frame styles from the handoff actually differ in. Defaults
+   are the frame as it was before they arrived; each [data-frame] below moves
+   some of these. Dimensions are not in here on purpose — the handoff took ours
+   as fixed and varied only the treatment. */
+:root {
+  --screen-bg: #000;
+  --bar-bg: rgba(0, 0, 0, 0.55);
+  --bar-blur: blur(8px);
+  --bar-line: transparent;
+  --window-bg: #000;
+  --window-radius: 16px;
+  --seam: none;
+  --seam-h: 0px;
+  --pix: transparent;
+  --pix-size: 0px;
+  --pix-inset: 0px;
+  --window-edge: none;
+}
+
 html, body {
   height: 100%;
-  background: #000;
+  background: var(--screen-bg);
   color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overscroll-behavior: none;
@@ -72,7 +91,7 @@ html, body {
   min-width: 0;
   position: relative;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--window-radius);
 }
 
 /* Out of flow on purpose: centring it by layout would centre it inside a track
@@ -91,8 +110,8 @@ html, body {
   height: 100%;
   position: relative;
   overflow: hidden;
-  border-radius: 16px;
-  background: #000;
+  border-radius: var(--window-radius);
+  background: var(--window-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,8 +237,9 @@ html, body {
   justify-content: flex-end;
   gap: 8px;
   padding: env(safe-area-inset-top) 10px 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
+  background: var(--bar-bg);
+  backdrop-filter: var(--bar-blur);
+  border-bottom: 1px solid var(--bar-line);
 }
 
 /* Closes the frame, and puts the one action worth reaching for where the thumb
@@ -235,8 +255,9 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 0 12px env(safe-area-inset-bottom);
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
+  background: var(--bar-bg);
+  backdrop-filter: var(--bar-blur);
+  border-top: 1px solid var(--bar-line);
 }
 
 .bar-actions {
@@ -326,6 +347,124 @@ html, body {
   text-align: center;
 }
 
+/* ── The seven frames ────────────────────────────────────────────────────── */
+
+[data-frame='11c'], [data-frame='12a'] {
+  --screen-bg: #060708;
+  --bar-bg: rgba(255, 255, 255, 0.05);
+  --bar-blur: blur(10px);
+  --window-bg: linear-gradient(160deg, #0c0e11, #070809);
+  --window-radius: 18px;
+}
+[data-frame='11c'] { --bar-line: rgba(255, 255, 255, 0.09); }
+
+[data-frame='11f'], [data-frame='12b'] {
+  --screen-bg: #0b0908;
+  --bar-bg: #100c0a;
+  --bar-blur: none;
+  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
+}
+[data-frame='11f'] {
+  --bar-line: rgba(245, 190, 60, 0.22);
+  --window-radius: 18px;
+}
+
+[data-frame='12a'] {
+  --seam: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 4px, transparent 4px 9px);
+  --seam-h: 4px;
+  --pix: rgba(255, 255, 255, 0.4);
+  --pix-size: 5px;
+  --pix-inset: 7px;
+}
+
+[data-frame='12b'] {
+  --window-radius: 16px;
+  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.4) 0 4px, transparent 4px 11px);
+  --seam-h: 4px;
+}
+
+[data-frame='12c'] {
+  --screen-bg: #090807;
+  --bar-bg: rgba(255, 232, 196, 0.05);
+  --bar-blur: blur(10px);
+  --window-bg: linear-gradient(160deg, #100c09, #0a0705);
+  --window-radius: 18px;
+  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.5) 0 5px, rgba(245, 190, 60, 0.14) 5px 10px);
+  --seam-h: 5px;
+  --pix: rgba(245, 190, 60, 0.55);
+  --pix-size: 6px;
+  --pix-inset: 8px;
+}
+
+[data-frame='13a'], [data-frame='13b'] {
+  --screen-bg: #0b0908;
+  --bar-bg: #0e0b08;
+  --bar-blur: none;
+  --bar-line: rgba(245, 190, 60, 0.14);
+  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
+  --window-radius: 6px;
+}
+
+/* Chunky pixel seams along the bars' inner edges. */
+.action-bar::after,
+.bottom-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--seam-h);
+  background: var(--seam);
+  pointer-events: none;
+}
+.action-bar::after { bottom: calc(0px - var(--seam-h)); }
+.bottom-bar::before { top: calc(0px - var(--seam-h)); }
+
+/* Four pixels just inside the window's corners, as one element with four
+   backgrounds — cheaper than four divs in every slide. */
+.vad::after,
+.fake-ad::after {
+  content: '';
+  position: absolute;
+  inset: var(--pix-inset);
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0),
+    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0);
+  background-size: var(--pix-size) var(--pix-size);
+  background-position: 0 0, 100% 0, 0 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* 12b's pixel-stitched gold border, hugging all four window edges. */
+[data-frame='12b'] .vad::before,
+[data-frame='12b'] .fake-ad::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px);
+  background-size: 100% 4px, 100% 4px, 4px 100%, 4px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: no-repeat;
+}
+
+/* The gold frames are painted, not styled: above the window, below the bars
+   and the sack. */
+.frame-ornament {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 /* Above everything, including the inventory: nothing behind it should be
    reachable before the click that lets the page make a sound. */
 .start-gate {
@@ -357,8 +496,59 @@ html, body {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* Picking a frame repaints the gate's own bars behind it, so the choice is
+   half-visible before Start is even pressed. */
+.frame-picker {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.frame-group-name {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 6px;
+}
+
+.frame-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.frame-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.frame-chip.is-on {
+  border-color: #f5be3c;
+  background: rgba(245, 190, 60, 0.14);
+  color: #fff;
+}
+
+.frame-chip-id {
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  opacity: 0.5;
+}
+.frame-chip.is-on .frame-chip-id { opacity: 0.8; }
+
 .start-btn {
-  margin-top: 26px;
+  margin-top: 22px;
   padding: 13px 40px;
   border: 0;
   border-radius: 999px;

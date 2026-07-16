@@ -18,6 +18,8 @@ import BuyAdButton from '@/components/BuyAdButton';
 import InventoryButton from '@/components/InventoryButton';
 import InventoryOverlay from '@/components/InventoryOverlay';
 import StartGate from '@/components/StartGate';
+import FrameOrnament from '@/components/FrameOrnament';
+import { DEFAULT_FRAME } from '@/lib/frames';
 
 export default function Feed() {
   const feedRef = useRef(null);
@@ -28,6 +30,7 @@ export default function Feed() {
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [filled, setFilled] = useState(() => new Set());
   const [started, setStarted] = useState(false);
+  const [frame, setFrame] = useState(DEFAULT_FRAME);
   // One setting for the whole feed rather than one per slide: muting an ad you
   // don't want to hear should mean the next one is quiet too. Starts on,
   // because the gate's click is what earns the right to play it.
@@ -48,6 +51,12 @@ export default function Feed() {
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   }, []);
+
+  // On the root rather than a wrapper, so the frame reaches the fixed bars and
+  // the body's own background too.
+  useEffect(() => {
+    document.documentElement.dataset.frame = frame;
+  }, [frame]);
 
   // The slider belongs to the page rather than any slide, so it starts once
   // with the feed and Adcash decides where to put it.
@@ -138,7 +147,11 @@ export default function Feed() {
       {/* Over the feed rather than instead of it, so the first ad is fetched
           and measured while the gate is still up and is there on the first
           swipe. */}
-      {!started && <StartGate onStart={() => setStarted(true)} />}
+      <FrameOrnament frame={frame} />
+
+      {!started && (
+        <StartGate frame={frame} onFrameChange={setFrame} onStart={() => setStarted(true)} />
+      )}
     </>
   );
 }
