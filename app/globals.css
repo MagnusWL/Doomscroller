@@ -2,6 +2,8 @@
 
 :root {
   --bar-h: 52px;
+  --frame-x: 14px;
+  --frame-y: 8px;
 }
 
 html, body {
@@ -21,12 +23,15 @@ html, body {
 }
 #feed::-webkit-scrollbar { display: none; }
 
-/* The bar floats over the slide rather than pushing it down, and costs the ad
-   nothing: a contained creative never reaches the top edge of a phone-shaped
-   slide, so the bar sits in space that was already empty. */
+/* The ad is a window inside a frame: bars top and bottom, a margin down each
+   side. The padding reserves the frame; the ad fills whatever is left. */
 .slide {
   height: 100dvh;
   width: 100%;
+  padding:
+    calc(env(safe-area-inset-top) + var(--bar-h) + var(--frame-y))
+    var(--frame-x)
+    calc(env(safe-area-inset-bottom) + var(--bar-h) + var(--frame-y));
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: flex;
@@ -46,6 +51,7 @@ html, body {
   min-width: 0;
   position: relative;
   overflow: hidden;
+  border-radius: 16px;
 }
 
 /* Out of flow on purpose: centring it by layout would centre it inside a track
@@ -58,30 +64,48 @@ html, body {
   transform-origin: center;
 }
 
-/* Video ad slide: fills the slide edge-to-edge. */
+/* Video ad slide: the window inside the frame. */
 .vad {
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: hidden;
+  border-radius: 16px;
   background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Contain, not cover: the whole creative is shown at whatever size fits beside
-   the rail. Nearly all VAST inventory is 16:9, so in a vertical frame that
-   leaves a lot of empty slide — the honest trade for cropping nothing. */
-.vad video {
+/* Contain, not cover: every pixel the advertiser made is on screen, at
+   whatever size fits the window. */
+.vad-media {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-/* Clears the bar overhead. */
+/* Fills the window behind the ad with the ad's own colours, so a 16:9 creative
+   in a portrait window reads as framed rather than lost in black. Scaled past
+   the edges because a blur of this radius leaves the frame's own edge soft. */
+.vad-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.18);
+  filter: blur(30px) saturate(1.35) brightness(0.55);
+  pointer-events: none;
+}
+
+/* Positioned against the window, which the frame has already inset. */
 .vad-badge {
   position: absolute;
-  top: calc(env(safe-area-inset-top) + var(--bar-h) + 12px);
+  z-index: 2;
+  top: 12px;
   left: 12px;
   padding: 4px 10px;
   border-radius: 999px;
@@ -95,7 +119,8 @@ html, body {
 
 .vad-sound {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  z-index: 2;
+  bottom: 12px;
   left: 12px;
   width: 40px;
   height: 40px;
@@ -111,7 +136,8 @@ html, body {
 
 .vad-skip {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  z-index: 2;
+  bottom: 12px;
   right: 12px;
   height: 40px;
   padding: 0 16px;
@@ -130,10 +156,10 @@ html, body {
   cursor: default;
 }
 
-/* Clear of the sound and skip buttons sitting on the slide's bottom edge. */
+/* Clear of the bottom bar and the controls on the window's lower edge. */
 .hint {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom) + 62px);
+  bottom: calc(env(safe-area-inset-bottom) + var(--bar-h) + 68px);
   left: 50%;
   transform: translateX(-50%);
   font-size: 12px;
@@ -165,10 +191,35 @@ html, body {
   backdrop-filter: blur(8px);
 }
 
+/* Closes the frame, and puts the one action worth reaching for where the thumb
+   already is. */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(env(safe-area-inset-bottom) + var(--bar-h));
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px env(safe-area-inset-bottom);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+}
+
 .bar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.bottom-bar .action-btn {
+  padding: 8px 22px;
+  font-size: 13px;
+}
+.bottom-bar .action-icon {
+  font-size: 15px;
 }
 
 .coin-counter {

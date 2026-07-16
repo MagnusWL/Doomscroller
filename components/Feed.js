@@ -110,10 +110,13 @@ export default function Feed() {
       <div className="action-bar">
         <AdCoinCounter coins={coins.coins} />
         <div className="bar-actions">
-          <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
           <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
           <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
         </div>
+      </div>
+
+      <div className="bottom-bar">
+        <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
       </div>
 
       <InventoryOverlay

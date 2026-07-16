@@ -12,7 +12,21 @@ const px = url => { new Image().src = url; };
 export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const rootRef = useRef(null);
   const videoRef = useRef(null);
+  const backdropRef = useRef(null);
   const fired = useRef(new Set());
+
+  // The backdrop is the same footage, so it starts and stops with the ad
+  // rather than decoding on its own schedule.
+  const playAll = () => {
+    for (const ref of [videoRef, backdropRef]) {
+      if (ref.current) ref.current.play().catch(() => {});
+    }
+  };
+  const pauseAll = () => {
+    for (const ref of [videoRef, backdropRef]) {
+      if (ref.current) ref.current.pause();
+    }
+  };
 
   const [ad, setAd] = useState(null);
   const [requested, setRequested] = useState(false);
@@ -43,11 +57,11 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
               setNoFill(true);
             }
           });
-        } else if (videoRef.current) {
-          videoRef.current.play().catch(() => {});
+        } else {
+          playAll();
         }
-      } else if (videoRef.current) {
-        videoRef.current.pause();
+      } else {
+        pauseAll();
       }
     }, { root: feed, threshold: 0.6 });
 
@@ -130,8 +144,24 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
       style={ad.clickThrough ? { cursor: 'pointer' } : undefined}
       onClick={handleRootClick}
     >
+      {/* The same footage, blown up and blurred to fill the window behind the
+          ad. Nearly all inventory is 16:9 in a portrait frame, so without this
+          the ad sits in a black void; cropping it to fill would throw away
+          three quarters of what the advertiser made. */}
+      <video
+        ref={backdropRef}
+        className="vad-backdrop"
+        src={ad.media.url}
+        muted
+        playsInline
+        preload="auto"
+        autoPlay
+        aria-hidden="true"
+        tabIndex={-1}
+      />
       <video
         ref={videoRef}
+        className="vad-media"
         src={ad.media.url}
         muted={muted}
         playsInline
