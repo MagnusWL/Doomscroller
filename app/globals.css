@@ -2,8 +2,12 @@
 
 :root {
   --bar-h: 52px;
-  --frame-x: 14px;
-  --frame-y: 8px;
+  /* Sized together, not to taste: they set the window's shape as well as its
+     size, and at these values it lands on 0.563 — which is 9:16 to within a
+     tenth of a percent, so portrait ads meet the frame without being cropped
+     to do it. Change one and the other has to follow. */
+  --frame-x: 32px;
+  --frame-y: 40px;
 }
 
 html, body {
