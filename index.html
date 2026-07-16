@@ -242,6 +242,14 @@
 
   const AC_ZONE_ID = '11731342';
 
+  // Page-level overlay that rides alongside the feed, so it adds inventory
+  // rather than competing with the in-slide ads for space. Adcash places it
+  // itself; there is no renderIn to point at a slide.
+  const AC_VIDEO_SLIDER_ZONE = '11730578';
+  if (typeof aclib !== 'undefined') {
+    aclib.runVideoSlider({ zoneId: AC_VIDEO_SLIDER_ZONE });
+  }
+
   // Ad servers collapse repeat requests carrying the same correlator into one
   // impression and stop filling, so every request needs a fresh one.
   const correlator = () => `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
@@ -249,9 +257,11 @@
   // Video ad sources, tried in order until one fills. VAST is an IAB standard,
   // so a new network is one more entry here and nothing else.
   const VAST_TAGS = [
-    // Adcash In-stream Video zone 11731718. Unlike the banner zone, this one
-    // fills on desktop as well as mobile.
+    // Adcash In-stream Video zones. Both fill on desktop as well as mobile,
+    // unlike the banner zone. Two zones against the same demand still widen the
+    // creative rotation and cover each other's frequency caps.
     () => 'https://youradexchange.com/video/select.php?r=11731718',
+    () => 'https://youradexchange.com/video/select.php?r=11731598',
     // Google's public sample tag, so the feed still shows video when Adcash has
     // nothing to serve. It earns nothing — drop it before this carries real traffic.
     () => 'https://pubads.g.doubleclick.net/gampad/ads' +
@@ -353,9 +363,16 @@
     };
   }
 
+  // Rotate which source is asked first. Always starting at the top of the list
+  // would serve one zone's creative over and over and leave the rest for
+  // fallback only; this spreads slides across every source and still walks the
+  // others when one comes back empty.
+  let tagCursor = 0;
+
   async function loadVideoAd() {
-    for (const tag of VAST_TAGS) {
-      const ad = await resolveVast(tag());
+    const start = tagCursor++;
+    for (let i = 0; i < VAST_TAGS.length; i++) {
+      const ad = await resolveVast(VAST_TAGS[(start + i) % VAST_TAGS.length]());
       if (ad) return ad;
     }
     return null;
@@ -525,9 +542,9 @@
       slide.className = 'slide';
       slide.dataset.index = count;
 
-      // Alternate video and the banner pair, so neither format carries the
-      // whole feed on its own.
-      if (count % 2 === 1) {
+      // Two video slides for every banner pair: video is the format worth
+      // scrolling, banners keep the mix from resting on one demand source.
+      if (count % 3 !== 0) {
         slide.innerHTML = '<div class="vad"></div>';
       } else {
         slide.innerHTML = bannerMarkup(count);
