@@ -56,6 +56,77 @@
     overflow: hidden;
   }
 
+  /* Video ad slide: edge-to-edge like the banner slides. */
+  .vad {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Nearly all VAST inventory is 16:9, so contain letterboxes rather than
+     cropping the advertiser's message out of a vertical frame. */
+  .vad video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* Clears the fixed braincell bar across the top. */
+  .vad-badge {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 66px);
+    left: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    z-index: 2;
+  }
+
+  .vad-sound {
+    position: absolute;
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .vad-skip {
+    position: absolute;
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
+    right: 12px;
+    height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .vad-skip:disabled {
+    color: rgba(255, 255, 255, 0.45);
+    cursor: default;
+  }
+
   .hint {
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom) + 20px);
@@ -171,6 +242,206 @@
 
   const AC_ZONE_ID = '11731342';
 
+  // Ad servers collapse repeat requests carrying the same correlator into one
+  // impression and stop filling, so every request needs a fresh one.
+  const correlator = () => `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+
+  // Video ad sources, tried in order until one fills. VAST is an IAB standard,
+  // so a new network is one more entry here and nothing else.
+  const VAST_TAGS = [
+    // Adcash In-stream Video zone 11731718. Unlike the banner zone, this one
+    // fills on desktop as well as mobile.
+    () => 'https://youradexchange.com/video/select.php?r=11731718',
+    // Google's public sample tag, so the feed still shows video when Adcash has
+    // nothing to serve. It earns nothing — drop it before this carries real traffic.
+    () => 'https://pubads.g.doubleclick.net/gampad/ads' +
+          '?iu=/21775744923/external/single_ad_samples&sz=640x480' +
+          '&cust_params=sample_ct%3Dlinear&ciu_szs=300x250&gdfp_req=1' +
+          `&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=${correlator()}`,
+  ];
+
+  const px = url => { new Image().src = url; };
+  const nodeText = el => el && el.textContent.trim();
+
+  function collectTrackers(ad) {
+    const t = { impression: [], click: [], events: {} };
+    ad.querySelectorAll('Impression').forEach(n => t.impression.push(nodeText(n)));
+    ad.querySelectorAll('ClickTracking').forEach(n => t.click.push(nodeText(n)));
+    ad.querySelectorAll('TrackingEvents > Tracking').forEach(n => {
+      const ev = n.getAttribute('event');
+      (t.events[ev] = t.events[ev] || []).push(nodeText(n));
+    });
+    return t;
+  }
+
+  function mergeTrackers(outer, inner) {
+    const events = Object.assign({}, outer.events);
+    for (const [ev, urls] of Object.entries(inner.events)) {
+      events[ev] = (events[ev] || []).concat(urls);
+    }
+    return {
+      impression: outer.impression.concat(inner.impression),
+      click: outer.click.concat(inner.click),
+      events,
+    };
+  }
+
+  // Progressive MP4 only — HLS and DASH need a media-source player we don't ship.
+  function pickMedia(ad) {
+    const files = [...ad.querySelectorAll('MediaFile')]
+      .filter(f => (f.getAttribute('type') || '').includes('mp4'))
+      .map(f => ({ url: nodeText(f), width: +f.getAttribute('width') || 0 }))
+      .filter(f => f.url)
+      .sort((a, b) => b.width - a.width);
+    return files.find(f => f.width <= 1280) || files[0] || null;
+  }
+
+  const hmsToSeconds = hms => {
+    const parts = String(hms).split(':').map(Number);
+    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : NaN;
+  };
+
+  // VAST states skippability as either a timestamp or a percentage of the ad's
+  // own duration. Absent means the viewer must sit through it.
+  function parseSkipOffset(raw, duration) {
+    if (!raw) return null;
+    if (raw.trim().endsWith('%')) {
+      const pct = parseFloat(raw);
+      return isFinite(pct) && isFinite(duration) ? (duration * pct) / 100 : null;
+    }
+    const secs = hmsToSeconds(raw);
+    return isFinite(secs) ? secs : null;
+  }
+
+  // Networks routinely answer with a Wrapper pointing at another ad server
+  // instead of the ad itself, and every hop carries trackers that must fire
+  // alongside the final ad's own.
+  async function resolveVast(url, depth = 0) {
+    if (depth > 4) return null;
+    let doc;
+    try {
+      const res = await fetch(url, { credentials: 'omit' });
+      if (!res.ok) return null;
+      doc = new DOMParser().parseFromString(await res.text(), 'text/xml');
+    } catch {
+      return null; // network error, or a tag server that withholds CORS headers
+    }
+
+    const ad = doc.querySelector('Ad');
+    if (!ad) return null; // empty VAST: no fill
+    const trackers = collectTrackers(ad);
+
+    const wrapper = ad.querySelector('Wrapper > VASTAdTagURI');
+    if (wrapper) {
+      const inner = await resolveVast(nodeText(wrapper), depth + 1);
+      return inner && Object.assign({}, inner, {
+        trackers: mergeTrackers(trackers, inner.trackers),
+      });
+    }
+
+    const media = pickMedia(ad);
+    if (!media) return null;
+    const linear = ad.querySelector('Linear');
+    return {
+      media,
+      trackers,
+      clickThrough: nodeText(ad.querySelector('ClickThrough')),
+      skipAfter: parseSkipOffset(
+        linear && linear.getAttribute('skipoffset'),
+        hmsToSeconds(nodeText(ad.querySelector('Duration')))
+      ),
+    };
+  }
+
+  async function loadVideoAd() {
+    for (const tag of VAST_TAGS) {
+      const ad = await resolveVast(tag());
+      if (ad) return ad;
+    }
+    return null;
+  }
+
+  function playAd(box, ad) {
+    const video = document.createElement('video');
+    video.src = ad.media.url;
+    video.muted = true; // browsers refuse to autoplay audible video
+    video.playsInline = true;
+    video.preload = 'auto';
+
+    // Scrolling back to a slide resumes the same video, so every milestone
+    // fires at most once per ad — an impression counted twice is a billing lie.
+    const fired = new Set();
+    const once = (key, urls) => {
+      if (fired.has(key)) return;
+      fired.add(key);
+      urls.forEach(px);
+    };
+    const fireOnce = ev => once(ev, ad.trackers.events[ev] || []);
+    const fireEvery = ev => (ad.trackers.events[ev] || []).forEach(px);
+
+    video.addEventListener('playing', () => {
+      once('impression', ad.trackers.impression);
+      fireOnce('start');
+    });
+
+    video.addEventListener('timeupdate', () => {
+      const p = video.currentTime / (video.duration || Infinity);
+      if (p >= 0.25) fireOnce('firstQuartile');
+      if (p >= 0.5) fireOnce('midpoint');
+      if (p >= 0.75) fireOnce('thirdQuartile');
+    });
+
+    video.addEventListener('ended', () => fireOnce('complete'));
+
+    const badge = document.createElement('div');
+    badge.className = 'vad-badge';
+    badge.textContent = 'Ad';
+
+    const sound = document.createElement('button');
+    sound.className = 'vad-sound';
+    sound.textContent = '🔇';
+    sound.addEventListener('click', e => {
+      e.stopPropagation();
+      video.muted = !video.muted;
+      sound.textContent = video.muted ? '🔇' : '🔊';
+      fireEvery(video.muted ? 'mute' : 'unmute');
+    });
+
+    // Adcash serves creatives up to a minute long. Without a way out, one ad
+    // holds the feed hostage for as long as the advertiser paid for.
+    const controls = [badge, sound];
+    if (ad.skipAfter != null) {
+      const skip = document.createElement('button');
+      skip.className = 'vad-skip';
+      skip.disabled = true;
+      skip.textContent = `Skip in ${Math.ceil(ad.skipAfter)}`;
+      skip.addEventListener('click', e => {
+        e.stopPropagation();
+        fireEvery('skip');
+        feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
+      });
+      video.addEventListener('timeupdate', () => {
+        const left = Math.ceil(ad.skipAfter - video.currentTime);
+        skip.disabled = left > 0;
+        skip.textContent = left > 0 ? `Skip in ${left}` : 'Skip ›';
+      });
+      controls.push(skip);
+    }
+
+    if (ad.clickThrough) {
+      box.style.cursor = 'pointer';
+      box.addEventListener('click', () => {
+        ad.trackers.click.forEach(px);
+        window.open(ad.clickThrough, '_blank', 'noopener');
+      });
+    }
+
+    box.textContent = '';
+    box.append(video, ...controls);
+    video.play().catch(() => {});
+    return video;
+  }
+
   // Real, verified-embeddable lectures on famously dry subjects.
   const BORING_LECTURES = [
     'wWnfJ0-xXRE', // MIT 8.01x Physics intro — Walter Lewin
@@ -224,6 +495,27 @@
 
   let count = 0;
 
+  const bannerSlotIds = index => [`ac-slot-${index}-a`, `ac-slot-${index}-b`];
+
+  const bannerMarkup = index => {
+    const [a, b] = bannerSlotIds(index);
+    return `
+      <div class="ad">
+        <div class="ac-slot" id="${a}"></div>
+        <div class="ac-slot" id="${b}"></div>
+      </div>`;
+  };
+
+  // Must run after the slides are in the DOM, since Adcash looks up renderIn by
+  // selector. Inline <script> tags don't execute when inserted via innerHTML,
+  // hence the programmatic call.
+  function runBanners(slotIds) {
+    if (typeof aclib === 'undefined') return;
+    for (const id of slotIds) {
+      aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
+    }
+  }
+
   function addSlides(n) {
     const frag = document.createDocumentFragment();
     const newAdSlots = [];
@@ -233,28 +525,53 @@
       slide.className = 'slide';
       slide.dataset.index = count;
 
-      const slotIdA = `ac-slot-${count}-a`;
-      const slotIdB = `ac-slot-${count}-b`;
-      slide.innerHTML = `
-        <div class="ad">
-          <div class="ac-slot" id="${slotIdA}"></div>
-          <div class="ac-slot" id="${slotIdB}"></div>
-        </div>`;
-      newAdSlots.push(slotIdA, slotIdB);
+      // Alternate video and the banner pair, so neither format carries the
+      // whole feed on its own.
+      if (count % 2 === 1) {
+        slide.innerHTML = '<div class="vad"></div>';
+      } else {
+        slide.innerHTML = bannerMarkup(count);
+        newAdSlots.push(...bannerSlotIds(count));
+      }
 
       frag.appendChild(slide);
     }
     feed.appendChild(frag);
     observeTail();
+    runBanners(newAdSlots);
+  }
 
-    // Fill each new slot. Must run after the slides are in the DOM, since
-    // Adcash looks up renderIn by selector. Inline <script> tags don't
-    // execute when inserted via innerHTML, hence the programmatic call.
-    if (typeof aclib !== 'undefined') {
-      for (const id of newAdSlots) {
-        aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
+  // Requesting every ad up front would spend advertiser budget on impressions
+  // nobody sees, and a wall of autoplaying video gets throttled by the browser.
+  // So a video slide only fetches once it reaches the screen.
+  const videoSlides = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      const box = e.target.querySelector('.vad');
+      if (!box) continue;
+      const video = box.querySelector('video');
+      if (!e.isIntersecting) {
+        if (video) video.pause();
+      } else if (box.dataset.filled) {
+        if (video) video.play().catch(() => {});
+      } else {
+        box.dataset.filled = '1';
+        fillVideoSlide(box);
       }
     }
+  }, { root: feed, threshold: 0.6 });
+
+  async function fillVideoSlide(box) {
+    const ad = await loadVideoAd();
+    if (ad) {
+      playAd(box, ad);
+      return;
+    }
+    // No video to show: fall back to the banner pair rather than leave a dead
+    // black slide, so the slot still earns.
+    const slide = box.closest('.slide');
+    const index = slide.dataset.index;
+    slide.innerHTML = bannerMarkup(index);
+    runBanners(bannerSlotIds(index));
   }
 
   // Append more ads when the last one scrolls into view — endless feed.
@@ -279,7 +596,10 @@
 
   function observeTail() {
     const slides = feed.querySelectorAll('.slide');
-    slides.forEach(s => progress.observe(s));
+    slides.forEach(s => {
+      progress.observe(s);
+      if (s.querySelector('.vad')) videoSlides.observe(s);
+    });
     tail.observe(slides[slides.length - 1]);
   }
 
