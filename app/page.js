@@ -295,10 +295,19 @@ export default function Home() {
     // Must run after the slides are in the DOM, since Adcash looks up renderIn by
     // selector. Inline <script> tags don't execute when inserted via innerHTML,
     // hence the programmatic call.
-    function runBanners(slotIds) {
-      if (typeof window.aclib === 'undefined') return;
-      for (const id of slotIds) {
-        window.aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
+    //
+    // aclib.js loads via next/script's "afterInteractive" strategy, so it can
+    // still be mid-load — or defined but not yet fully initialized — when the
+    // first slides mount. Retry briefly instead of dropping the ad silently.
+    function runBanners(slotIds, attempt = 0) {
+      if (!slotIds.length) return;
+      const aclib = window.aclib;
+      if (aclib && typeof aclib.runBanner === 'function') {
+        for (const id of slotIds) {
+          aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
+        }
+      } else if (attempt < 20) {
+        setTimeout(() => runBanners(slotIds, attempt + 1), 300);
       }
     }
 
