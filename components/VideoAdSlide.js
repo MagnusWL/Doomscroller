@@ -37,19 +37,34 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const [noFill, setNoFill] = useState(false);
   const [muted, setMuted] = useState(true);
   const [skipSecondsLeft, setSkipSecondsLeft] = useState(null);
-  // Where the picture actually is inside the file, and how big the window is.
-  // Null until measured; the ad is laid out by CSS in the meantime.
-  const [bounds, setBounds] = useState(null);
+  // undefined while the probe is still running, null once it has come back
+  // empty — the two mean different things, and only the first is worth waiting
+  // on.
+  const [probed, setProbed] = useState(undefined);
+  const [intrinsic, setIntrinsic] = useState(null);
   const [box, setBox] = useState(null);
 
   useEffect(() => {
     if (!ad) return;
     let live = true;
     pictureBounds(ad.media.url).then(result => {
-      if (live) setBounds(result);
+      if (live) setProbed(result || null);
     });
     return () => { live = false; };
   }, [ad]);
+
+  // The fallback when the pixels can't be read: trust the file.
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (video && video.videoWidth) {
+      setIntrinsic({ w: video.videoWidth, h: video.videoHeight });
+    }
+  };
+
+  const bounds = probed === undefined
+    ? null
+    : probed ||
+      (intrinsic ? { file: intrinsic, picture: { x: 0, y: 0, ...intrinsic } } : null);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -184,7 +199,7 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
 
   return (
     <div
-      className="vad"
+      className={`vad${layout ? ' vad-ready' : ''}`}
       ref={rootRef}
       style={ad.clickThrough ? { cursor: 'pointer' } : undefined}
       onClick={handleRootClick}
@@ -215,6 +230,7 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
         playsInline
         preload="auto"
         autoPlay
+        onLoadedMetadata={handleLoadedMetadata}
         onPlaying={handlePlaying}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}

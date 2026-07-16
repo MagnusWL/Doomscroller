@@ -83,7 +83,10 @@ html, body {
 
 /* Both are placed by VideoAdSlide, in pixels, so the picture inside the file
    lands in the window and the file's own padding is clipped by the window's
-   overflow. These rules only cover the moment before that measurement lands. */
+   overflow. Held back until that measurement lands: showing the ad first meant
+   it played at the file's shape for a beat and then jumped to its real one.
+   The probe runs alongside the ad's own load, so the wait is the difference
+   between them rather than the sum. */
 .vad-media,
 .vad-backdrop {
   position: absolute;
@@ -91,6 +94,13 @@ html, body {
   height: 100%;
   max-width: none;
   object-fit: contain;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
+}
+
+.vad-ready .vad-media,
+.vad-ready .vad-backdrop {
+  opacity: 1;
 }
 
 .vad-media {
