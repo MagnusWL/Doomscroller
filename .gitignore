@@ -1,3 +1,7 @@
 .claude/
 .vercel/
 .DS_Store
+
+# Nicolais lokale noter og arbejdsaftaler - hoerer ikke hjemme i Magnus' repo
+CLAUDE.md
+URL TIL NICOS BRANCH.txt
