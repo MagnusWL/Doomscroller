@@ -63,6 +63,25 @@ export default function AdCoinCounter({ coins }) {
     };
   }, []);
 
+  // Web Audio won't start until the page has been interacted with, and the
+  // engine only tries once — at construction, which is before any interaction
+  // could have happened. So it stays suspended and the coins stay silent until
+  // something else on the page happens to unblock audio, which in practice
+  // meant unmuting the ad: two unrelated things, tangled. Any interaction
+  // resumes it now, and the listeners stay on because the sack may not exist
+  // yet the first time one fires.
+  useEffect(() => {
+    const wake = () => {
+      const sack = sackRef.current;
+      if (sack && sack.audio && sack.audio.state === 'suspended') sack.audio.resume();
+    };
+    const events = ['pointerdown', 'touchend', 'keydown'];
+    for (const e of events) window.addEventListener(e, wake, { passive: true });
+    return () => {
+      for (const e of events) window.removeEventListener(e, wake);
+    };
+  }, []);
+
   // One coin dropped per coin earned. Counting the difference rather than
   // reacting to each award keeps the sack right even if several land at once.
   useEffect(() => {

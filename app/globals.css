@@ -9,13 +9,22 @@
   --frame-x: 32px;
   --frame-y: 40px;
 
-  /* Move and resize the sack with these four. The engine reads the canvas box
-     and scales both the sack art and the coins to fit it, so the size is only
-     ever this — nothing in the component or the engine needs touching. */
+  /* Move and resize the sack with these. The engine reads the canvas box and
+     scales both the sack art and the coins to fit it, so the size is only ever
+     this — nothing in the component or the engine needs touching. */
   --sack-w: 62px;
   --sack-h: 90px;
   --sack-left: var(--frame-x);
-  --sack-top: 8px;
+
+  /* Derived, so the sack keeps standing ON the ad rather than in it however it
+     is resized: its foot lands exactly on the window's top edge, and the rest
+     hangs up over the bar — which is empty on the left, since the total moved
+     out of it.
+     There's a ceiling: it can only climb as far as the bar is tall, so a sack
+     over --frame-y + --bar-h (92px here) reaches into the notch. At 90 it has
+     2px to spare. Growing it past that means growing --frame-y — and --frame-x
+     has to follow, or the window stops matching 9:16. */
+  --sack-top: calc(var(--frame-y) - var(--sack-h));
 }
 
 html, body {
@@ -244,17 +253,15 @@ html, body {
   font-size: 15px;
 }
 
-/* Hangs below the bar with its left edge flush with the ad window's, per the
-   handoff. It reaches over the window's top corner: the sack is taller than the
-   frame's gap, and it's the one thing meant to sit on the ad rather than beside
-   it. */
+/* Left edge flush with the ad window's, per the handoff; foot resting on its
+   top edge, so it stands on the ad rather than in it. */
 .coin-sack {
   position: fixed;
   z-index: 12;
   top: calc(env(safe-area-inset-top) + var(--bar-h) + var(--sack-top));
   left: var(--sack-left);
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 8px;
   pointer-events: none;
 }
@@ -267,7 +274,7 @@ html, body {
 
 /* Gold, and staying gold — the client picked it. */
 .coin-sack .coin-value {
-  margin-top: 3px;
+  margin-bottom: 6px;
   font-size: 15px;
   font-variant-numeric: tabular-nums;
   color: #f5be3c;
