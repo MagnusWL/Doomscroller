@@ -76,7 +76,29 @@ De findes kun fordi telefonen her er en kasse på en side og ikke et
 browservindue. Geometrien er den samme, så knappen **Kopiér CSS** giver et
 `:root`-blok der kan sættes direkte ind i `globals.css`.
 
-## De to tal panelet holder øje med
+## Sækkens plads
+
+Sækken hænger i et **hjørne af reklamevinduet** og skubbes derfra:
+
+```css
+--sack-x: 0px;   /* fra hjørnets lodrette kant; positivt = ind over reklamen */
+--sack-y: 0px;   /* fra hjørnets vandrette kant; positivt = ind over reklamen */
+```
+
+Hjørnet vælges med `data-sack` på roden: `tl`, `tr`, `bl`, `br`. **`tl` med
+`0, 0` er præcis den plads sækken har i appen i dag** — venstre kant flugtende
+med vinduets, foden på dets overkant.
+
+Et hjørne frem for rå x/y, fordi sækken så følger med når rammen ændrer sig.
+Og `--sack-h` står i CSS-formlen frem for i tallene, så foden bliver stående når
+sækken vokser: den vokser opad i stedet for at synke ned i reklamen.
+
+Skift hjørne, og sækken bliver hvor den er — kun tallene skifter. Eller **træk i
+den med musen**, så regnes skubbet ud af sig selv. (I appen er sækken
+`pointer-events: none`, så den ikke stjæler klik fra reklamen; det er kun
+ophævet her.)
+
+## De to ting panelet holder øje med
 
 **Forholdet.** `--frame-x` og `--frame-y` sætter vinduets *form*, ikke bare dets
 størrelse. Ved 32/40 på en iPhone 12 lander vinduet på 326×579 = **0.563**, og
@@ -84,9 +106,10 @@ størrelse. Ved 32/40 på en iPhone 12 lander vinduet på 326×579 = **0.563**, 
 Flytter du den ene variabel alene, skrider forholdet, og så begynder rammen at
 koste billede. Panelet siger til.
 
-**Sækkens loft.** Sækken står med foden på vinduets overkant og hænger op over
-bjælken, så den kan kun blive `--bar-h + --frame-y` høj. Bliver den højere,
-rager den op i notchen. Ved 52+40 er loftet 92px, og sækken er 90.
+**Hvad sækken lægger sig oven i.** Panelet måler sækkens kasse mod Ad-mærket,
+lydknappen, Skip-knappen, "Køb reklamen", topbjælkens knapper, de sikre zoner og
+skærmkanten. Det er målt på de rigtige kasser frem for regnet ud af tal, så det
+også fanger det der ikke er tænkt på.
 
 ## Hvad lab'et ikke kan svare på
 

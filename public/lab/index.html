@@ -62,6 +62,16 @@ body {
 
 .stage-note { font-size: 11px; color: #6f767f; }
 
+/* Kun her. I appen er sækken pointer-events: none, så den ikke stjæler klik
+   fra reklamen den ligger oven på — men her skal der kunne trækkes i den. */
+.coin-sack {
+  pointer-events: auto !important;
+  cursor: grab;
+  touch-action: none;
+}
+.coin-sack.dragging { cursor: grabbing; }
+.coin-sack.dragging canvas { outline: 1px dashed rgba(245, 190, 60, 0.7); }
+
 /* ── Panelet ──────────────────────────────────────────────────────────────── */
 .panel {
   flex: 1;
@@ -204,13 +214,17 @@ pre .k { color: #f5be3c; }
 
   --sack-w: 62px;
   --sack-h: 90px;
-  --sack-left: var(--frame-x);
 
-  /* Derived, so the sack keeps standing ON the ad rather than in it however it
-     is resized: its foot lands exactly on the window's top edge, and the rest
-     hangs up over the bar. There's a ceiling — a sack taller than
-     --bar-h + --frame-y reaches into the notch. */
-  --sack-top: calc(var(--frame-y) - var(--sack-h));
+  /* Sækken hænger i et hjørne af reklamevinduet og skubbes derfra, så den
+     følger med når rammen ændrer sig. 0,0 flugter med hjørnet: foden på
+     vinduets kant, siden på vinduets side. Positive tal skubber ind over
+     reklamen, negative ud i rammen.
+
+     --sack-h står i formlerne nedenfor, ikke her, og det er med vilje: så
+     bliver foden stående hvor den er når sækken vokser — den vokser opad i
+     stedet for at synke ned i reklamen. */
+  --sack-x: 0px;
+  --sack-y: 0px;
 
   /* Hvad de syv rammer er uenige om. */
   --screen-bg: #000;
@@ -377,17 +391,33 @@ pre .k { color: #f5be3c; }
 .bottom-bar .action-btn { padding: 8px 22px; font-size: 13px; }
 .bottom-bar .action-icon { font-size: 15px; }
 
-/* Left edge flush with the ad window's, per the handoff; foot resting on its
-   top edge, so it stands on the ad rather than in it. */
 .coin-sack {
   position: absolute;
   z-index: 12;
-  top: calc(var(--safe-top) + var(--bar-h) + var(--sack-top));
-  left: var(--sack-left);
   display: flex;
   align-items: flex-end;
   gap: 8px;
   pointer-events: none;
+}
+
+/* De fire hjørner af reklamevinduet at hænge i. Kun ét par gælder ad gangen:
+   den ene regel sætter top eller bottom, den anden left eller right.
+   Standarden — tl med 0,0 — er nøjagtig der sækken stod før: venstre kant
+   flugtende med vinduets, foden på dets overkant. */
+[data-sack^='t'] .coin-sack {
+  top: calc(var(--safe-top) + var(--bar-h) + var(--frame-y) + var(--sack-y) - var(--sack-h));
+}
+[data-sack^='b'] .coin-sack {
+  bottom: calc(var(--safe-bottom) + var(--bar-h) + var(--frame-y) + var(--sack-y) - var(--sack-h));
+}
+[data-sack$='l'] .coin-sack {
+  left: calc(var(--frame-x) + var(--sack-x));
+}
+/* Tallet bytter side, så det er sækken der flugter med kanten og ikke teksten
+   — og så vokser tallet ind mod midten frem for ud over kanten. */
+[data-sack$='r'] .coin-sack {
+  right: calc(var(--frame-x) + var(--sack-x));
+  flex-direction: row-reverse;
 }
 
 .coin-sack canvas {
@@ -707,11 +737,27 @@ pre .k { color: #f5be3c; }
     </div>
 
     <div class="card">
+      <h2>Sækken</h2>
+      <div class="chips" id="sackChips"></div>
+      <div id="sackSliders" style="margin-top:10px"></div>
+      <div class="note">
+        Hjørnet er et hjørne af <b>reklamevinduet</b>, så sækken følger med når
+        rammen ændrer sig. <b>0, 0</b> flugter med hjørnet — foden på vinduets
+        kant. Positive tal skubber ind over reklamen, negative ud i rammen.
+        <b>Du kan også bare trække i sækken.</b>
+      </div>
+      <div class="btns" style="margin-top:9px">
+        <button class="btn" id="sackReset">Som appen har den nu</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Hvad det giver</h2>
       <div class="readout">
         <div class="fact"><b>Vindue</b><span id="rWin">—</span></div>
         <div class="fact"><b>Forhold</b><span id="rRatio">—</span></div>
         <div class="fact"><b>Sæk</b><span id="rSack">—</span></div>
+        <div class="fact"><b>Rører</b><span id="rHit">—</span></div>
       </div>
       <div class="note" id="warn"></div>
     </div>
@@ -782,18 +828,34 @@ const ASPECTS = [
   { id: 'mix',   name: 'Bland', w: 0, h: 0 },
 ];
 
-// Startværdierne er dem der står i globals.css lige nu.
+// Startværdierne er dem der står i globals.css lige nu. tl med 0,0 er præcis
+// den plads sækken har i appen i dag.
 const DEFAULTS = {
   '--bar-h': 52, '--frame-x': 32, '--frame-y': 40,
-  '--sack-w': 62, '--sack-h': 90,
+  '--sack-w': 62, '--sack-h': 90, '--sack-x': 0, '--sack-y': 0,
+};
+const DEFAULT_ANCHOR = 'tl';
+
+const ANCHORS = [
+  { id: 'tl', name: '↖ Øverst tv.' },
+  { id: 'tr', name: '↗ Øverst th.' },
+  { id: 'bl', name: '↙ Nederst tv.' },
+  { id: 'br', name: '↘ Nederst th.' },
+];
+
+const ANCHOR_NAME = {
+  tl: 'Øverst til venstre', tr: 'Øverst til højre',
+  bl: 'Nederst til venstre', br: 'Nederst til højre',
 };
 
 const SLIDERS = [
-  { k: '--bar-h',   label: 'Bjælke', min: 28, max: 96 },
-  { k: '--frame-x', label: 'Side',   min: 0,  max: 80 },
-  { k: '--frame-y', label: 'Top/bund', min: 0, max: 120 },
-  { k: '--sack-w',  label: 'Sæk bred', min: 32, max: 140, sack: true },
-  { k: '--sack-h',  label: 'Sæk høj',  min: 48, max: 160, sack: true },
+  { k: '--bar-h',   label: 'Bjælke',   min: 28,   max: 96,  host: '#sliders' },
+  { k: '--frame-x', label: 'Side',     min: 0,    max: 80,  host: '#sliders' },
+  { k: '--frame-y', label: 'Top/bund', min: 0,    max: 120, host: '#sliders' },
+  { k: '--sack-w',  label: 'Bredde',   min: 32,   max: 140, host: '#sackSliders', sack: true },
+  { k: '--sack-h',  label: 'Højde',    min: 48,   max: 160, host: '#sackSliders', sack: true },
+  { k: '--sack-x',  label: 'Vandret',  min: -170, max: 240, host: '#sackSliders' },
+  { k: '--sack-y',  label: 'Lodret',   min: -170, max: 240, host: '#sackSliders' },
 ];
 
 const state = {
@@ -801,6 +863,7 @@ const state = {
   safe: true,
   frame: window.Frames.DEFAULT_FRAME,
   aspect: '9:16',
+  sack: DEFAULT_ANCHOR,
   vars: Object.assign({}, DEFAULTS),
   coins: 0,
   started: false,
@@ -994,13 +1057,84 @@ function paintOrnament() {
 
 const NINE_SIXTEEN = 9 / 16;
 
+/* Reklamevinduet i skærmens egne mål. wt/wl måles fra overkanten og venstre
+   side, wb/wr fra underkanten og højre — samme vej som CSS' top/left/bottom/
+   right, så regnestykkerne herunder er de samme som reglerne i stylesheet'et. */
 function measurements() {
   const d = device(), v = state.vars;
-  const w = d.w - v['--frame-x'] * 2;
-  const h = d.h
-    - (safeTop() + v['--bar-h'] + v['--frame-y'])
-    - (safeBottom() + v['--bar-h'] + v['--frame-y']);
-  return { w, h, ratio: h > 0 ? w / h : 0, ceiling: v['--bar-h'] + v['--frame-y'] };
+  const wt = safeTop() + v['--bar-h'] + v['--frame-y'];
+  const wb = safeBottom() + v['--bar-h'] + v['--frame-y'];
+  const wl = v['--frame-x'], wr = v['--frame-x'];
+  return {
+    wt, wb, wl, wr,
+    w: d.w - wl - wr,
+    h: d.h - wt - wb,
+    screenW: d.w, screenH: d.h,
+    get ratio() { return this.h > 0 ? this.w / this.h : 0; },
+  };
+}
+
+/* Sækkens lærred omregnet til skærmens øverste venstre hjørne. Modellen er
+   sandheden her frem for en måling — den gælder også før siden har nået at
+   lægge om. */
+function sackAbs() {
+  const m = measurements(), v = state.vars, a = state.sack;
+  return {
+    left: a[1] === 'l' ? m.wl + v['--sack-x']
+                       : m.screenW - m.wr - v['--sack-x'] - v['--sack-w'],
+    top: a[0] === 't' ? m.wt + v['--sack-y'] - v['--sack-h']
+                      : m.screenH - m.wb - v['--sack-y'],
+  };
+}
+
+/* Den anden vej: læg sækken et sted, og find det skub der siger det samme i
+   det hjørne den hænger i. Det er også hvad der holder sækken i ro når man
+   skifter hjørne — samme plads, nye tal. */
+function setSackAbs(left, top) {
+  const m = measurements(), v = state.vars, a = state.sack;
+  v['--sack-x'] = Math.round(a[1] === 'l'
+    ? left - m.wl
+    : m.screenW - m.wr - left - v['--sack-w']);
+  v['--sack-y'] = Math.round(a[0] === 't'
+    ? top - m.wt + v['--sack-h']
+    : m.screenH - m.wb - top);
+}
+
+function setAnchor(a) {
+  const p = sackAbs();
+  state.sack = a;
+  setSackAbs(p.left, p.top);
+  refreshSliders();
+  apply();
+}
+
+/* Hvad sækken lægger sig oven i. Målt på de rigtige kasser frem for regnet ud
+   af tal, så den også fanger det jeg ikke har tænkt på. Slidesene ligger
+   stablet, så kun den fremme er i nærheden — resten er langt over eller under. */
+function collisions() {
+  const r = $('#sack').getBoundingClientRect();
+  const s = screenEl.getBoundingClientRect();
+  const out = [];
+  const over = b => r.left < b.right - 1 && r.right > b.left + 1 &&
+                    r.top < b.bottom - 1 && r.bottom > b.top + 1;
+  const hit = (sel, name) => {
+    for (const el of document.querySelectorAll(sel)) {
+      if (over(el.getBoundingClientRect())) { out.push(name); return; }
+    }
+  };
+
+  hit('.vad-badge', 'Ad-mærket');
+  hit('.vad-sound', 'lydknappen');
+  hit('.vad-skip', 'Skip-knappen');
+  hit('.bottom-bar .action-btn', '”Køb reklamen”');
+  hit('.action-bar .bar-actions', 'knapperne i topbjælken');
+
+  if (r.top < s.top + safeTop() - 1) out.push('den sikre zone foroven');
+  if (r.bottom > s.bottom - safeBottom() + 1) out.push('den sikre zone forneden');
+  if (r.left < s.left - 1 || r.right > s.right + 1 ||
+      r.top < s.top - 1 || r.bottom > s.bottom + 1) out.push('skærmkanten');
+
+  return out;
 }
 
 function readout() {
@@ -1009,43 +1143,45 @@ function readout() {
 
   $('#rWin').textContent = m.w + ' × ' + Math.round(m.h) + ' px';
 
-  const off = Math.abs(m.ratio - NINE_SIXTEEN) / NINE_SIXTEEN;
-  const good = off < 0.01;
+  const good = Math.abs(m.ratio - NINE_SIXTEEN) / NINE_SIXTEEN < 0.01;
   $('#rRatio').innerHTML =
     '<span class="' + (good ? 'ok' : 'bad') + '">' + m.ratio.toFixed(3) + '</span> ' +
     '<em>' + (good ? '✓ 9:16' : '✗ 9:16 er 0.563') + '</em>';
 
-  const room = v['--sack-h'] <= m.ceiling;
   $('#rSack').innerHTML =
-    v['--sack-h'] + ' px <em>af</em> ' +
-    '<span class="' + (room ? 'ok' : 'bad') + '">' + m.ceiling + ' px loft</span>';
+    ANCHOR_NAME[state.sack] + ' <em>·</em> ' + v['--sack-x'] + ', ' + v['--sack-y'];
 
-  const warn = $('#warn');
+  const hits = collisions();
+  $('#rHit').innerHTML = hits.length
+    ? '<span class="bad">' + hits.join(', ') + '</span>'
+    : '<span class="ok">intet</span>';
+
   const msgs = [];
   if (m.h <= 0) msgs.push('Rammen har spist hele vinduet.');
   if (!good) msgs.push(
     'Vinduet er ikke længere 9:16. Reklamer i højformat får sorte kanter ' +
     'eller bliver beskåret for at passe.');
-  if (!room) msgs.push(
-    'Sækken er højere end bjælken plus toprammen, så den rager op i notchen. ' +
-    'Loftet er --bar-h + --frame-y.');
+  if (hits.length) msgs.push('Sækken ligger oven på ' + hits.join(', ') + '.');
+
+  const warn = $('#warn');
   warn.className = 'note' + (msgs.length ? ' warn' : '');
   warn.textContent = msgs.join(' ');
 }
 
-function exportCss() {
-  const v = state.vars;
-  const line = (k, val) => '  <span class="k">' + k + '</span>: ' + val + 'px;';
-  $('#cssOut').innerHTML = [
-    ':root {',
-    line('--bar-h', v['--bar-h']),
-    line('--frame-x', v['--frame-x']),
-    line('--frame-y', v['--frame-y']),
-    '',
-    line('--sack-w', v['--sack-w']),
-    line('--sack-h', v['--sack-h']),
-    '}',
-  ].join('\n');
+/* Reglen der siger hvilket hjørne sækken hænger i. env() frem for --safe-top,
+   fordi det er sådan appen skriver det — det er en af de tre erstatninger. */
+function sackRule() {
+  const a = state.sack;
+  const out = ['.coin-sack {'];
+  out.push(a[0] === 't'
+    ? '  top: calc(env(safe-area-inset-top) + var(--bar-h) + var(--frame-y) + var(--sack-y) - var(--sack-h));'
+    : '  bottom: calc(env(safe-area-inset-bottom) + var(--bar-h) + var(--frame-y) + var(--sack-y) - var(--sack-h));');
+  out.push(a[1] === 'l'
+    ? '  left: calc(var(--frame-x) + var(--sack-x));'
+    : '  right: calc(var(--frame-x) + var(--sack-x));');
+  if (a[1] === 'r') out.push('  flex-direction: row-reverse;');
+  out.push('}');
+  return out;
 }
 
 function cssText() {
@@ -1058,10 +1194,24 @@ function cssText() {
     '',
     '  --sack-w: ' + v['--sack-w'] + 'px;',
     '  --sack-h: ' + v['--sack-h'] + 'px;',
+    '  --sack-x: ' + v['--sack-x'] + 'px;',
+    '  --sack-y: ' + v['--sack-y'] + 'px;',
     '}',
     '',
+    '/* Sækken hænger ' + ANCHOR_NAME[state.sack].toLowerCase() + ' i reklamevinduet.',
+    '   0,0 ville flugte med hjørnet; positive tal skubber ind over reklamen. */',
+  ].concat(sackRule()).concat([
+    '',
     '/* Ramme: ' + state.frame + ' */',
-  ].join('\n');
+  ]).join('\n');
+}
+
+/* Samme tekst som knappen kopierer — ét sted at tage fejl frem for to. */
+function exportCss() {
+  $('#cssOut').innerHTML = cssText()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/(--[a-z-]+)(?=:)/g, '<span class="k">$1</span>');
 }
 
 /* ── Tegn det hele ────────────────────────────────────────────────────────── */
@@ -1073,6 +1223,7 @@ function apply() {
   phone.style.setProperty('--safe-top', safeTop() + 'px');
   phone.style.setProperty('--safe-bottom', safeBottom() + 'px');
   phone.dataset.frame = state.frame;
+  phone.dataset.sack = state.sack;
   for (const k in state.vars) phone.style.setProperty(k, state.vars[k] + 'px');
 
   $('#notch').style.display = state.safe && d.top >= 40 ? 'block' : 'none';
@@ -1088,6 +1239,8 @@ function apply() {
     c.classList.toggle('on', c.dataset.id === state.device));
   document.querySelectorAll('#aspectChips .chip').forEach(c =>
     c.classList.toggle('on', c.dataset.id === state.aspect));
+  document.querySelectorAll('#sackChips .chip').forEach(c =>
+    c.classList.toggle('on', c.dataset.id === state.sack));
 
   paintOrnament();
   readout();
@@ -1134,8 +1287,7 @@ function buildGatePicker() {
 }
 
 function buildSliders() {
-  const host = $('#sliders');
-  host.innerHTML = '';
+  for (const h of ['#sliders', '#sackSliders']) $(h).innerHTML = '';
   for (const s of SLIDERS) {
     const row = document.createElement('div');
     row.className = 'row';
@@ -1158,7 +1310,7 @@ function buildSliders() {
     // sæk. Først når du slipper — ellers bygges den om for hver pixel.
     if (s.sack) range.addEventListener('change', buildSack);
     s.show = show;
-    host.appendChild(row);
+    $(s.host).appendChild(row);
   }
 }
 
@@ -1172,8 +1324,39 @@ buildChips($('#frameChips'), window.Frames.FRAMES.map(f =>
   ({ id: f.id, name: f.id + ' ' + f.name, title: f.note })), id => { state.frame = id; apply(); });
 buildChips($('#deviceChips'), DEVICES, id => { state.device = id; apply(); });
 buildChips($('#aspectChips'), ASPECTS, id => { state.aspect = id; buildFeed(); apply(); });
+buildChips($('#sackChips'), ANCHORS, setAnchor);
 
 $('#safeToggle').addEventListener('change', e => { state.safe = e.target.checked; apply(); });
+
+/* Træk i sækken: skærmens koordinater ind, hjørnets skub ud. Derfor kan det du
+   gør med musen skrives ned som CSS bagefter. */
+(function dragSack() {
+  const el = $('.coin-sack');
+  let from = null;
+  el.addEventListener('pointerdown', e => {
+    const p = sackAbs();
+    from = { mx: e.clientX, my: e.clientY, left: p.left, top: p.top };
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('dragging');
+  });
+  el.addEventListener('pointermove', e => {
+    if (!from) return;
+    setSackAbs(from.left + e.clientX - from.mx, from.top + e.clientY - from.my);
+    refreshSliders();
+    apply();
+  });
+  const stop = () => { from = null; el.classList.remove('dragging'); };
+  el.addEventListener('pointerup', stop);
+  el.addEventListener('pointercancel', stop);
+})();
+
+$('#sackReset').addEventListener('click', () => {
+  state.sack = DEFAULT_ANCHOR;
+  state.vars['--sack-x'] = DEFAULTS['--sack-x'];
+  state.vars['--sack-y'] = DEFAULTS['--sack-y'];
+  refreshSliders();
+  apply();
+});
 
 $('#startBtn').addEventListener('click', () => {
   $('#gate').style.display = 'none';
@@ -1203,6 +1386,7 @@ $('#copyCss').addEventListener('click', async () => {
 $('#resetAll').addEventListener('click', () => {
   state.vars = Object.assign({}, DEFAULTS);
   state.frame = window.Frames.DEFAULT_FRAME;
+  state.sack = DEFAULT_ANCHOR;
   refreshSliders();
   apply();
   buildSack();
