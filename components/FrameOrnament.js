@@ -31,7 +31,9 @@ export default function FrameOrnament({ frame }) {
 
     const paint = () => {
       const rect = windowRect();
-      if (rect && rect.w > 0 && rect.h > 0) drawOrnate(canvas, rect, frame === '13a');
+      // The frame's id rather than a flag: which metal it is, and whether it
+      // carries the studs and the crest, are both lookups the ornament owns.
+      if (rect && rect.w > 0 && rect.h > 0) drawOrnate(canvas, rect, frame);
     };
     paint();
 

@@ -158,6 +158,26 @@ lydknappen, Skip-knappen, "Køb reklamen", topbjælkens knapper, de sikre zoner 
 skærmkanten. Det er målt på de rigtige kasser frem for regnet ud af tal, så det
 også fanger det der ikke er tænkt på.
 
+## Vignetten og sløret kan ikke begge vinde
+
+De seks metaller (14a–14f) har hver sin **vignette** bag reklamen — metallet i
+midten, mørkebrunt ude ved kanten, så en reklame der ikke fylder viser noget af
+den.
+
+Men appen lægger allerede reklamens egne farver, slørrede, i præcis det samme
+rum: `.vad-backdrop` med `object-fit: cover`. Og **cover fylder altid vinduet
+helt**, uanset reklamens format. Målt i lab'et på 14a med en 16:9-reklame: med
+sløret tændt er der ikke ét bronzefarvet pixel tilbage.
+
+Så det er et valg, ikke to lag der kan ligge oven på hinanden:
+
+- **Sløret** — vinduet tilhører reklamen. Hver reklame ser forskellig ud, og at
+  den ikke fylder bliver sløret væk.
+- **Vignetten** — vinduet tilhører rammen. Samme metal hver gang; reklamen læses
+  som et billede i en indfatning. Til gengæld ser man at den er lille.
+
+Kontakten **Slør bag reklamen** slukker sløret, så de to kan sammenlignes.
+
 ## Hvad lab'et ikke kan svare på
 
 Reklamernes egen opførsel: om de fylder, om de loader, om lyden i dem spiller,

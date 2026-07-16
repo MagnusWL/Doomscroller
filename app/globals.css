@@ -405,6 +405,30 @@ html, body {
   --window-radius: 6px;
 }
 
+/* The six metals: 13b's frame in another colour, with a matching vignette
+   behind the ad — metal in the middle, dark brown at the edges, so a creative
+   that can't fill the window shows some of it.
+
+   --metal-mid and --metal-deep are the same two roles as in PALETTES in
+   lib/frames.js, and the only place the two lists overlap: the ornament is
+   painted on a canvas and needs them in JS, the vignette is a gradient and
+   needs them here. Change one, change the other. */
+[data-frame^='14'] {
+  --screen-bg: #0b0c0e;
+  --bar-bg: #0e1013;
+  --bar-blur: none;
+  --bar-line: rgba(255, 255, 255, 0.06);
+  --window-radius: 6px;
+  --window-bg: radial-gradient(ellipse 86% 66% at 50% 44%,
+    var(--metal-mid) 0%, var(--metal-deep) 36%, #1c1209 70%, #100c07 100%);
+}
+[data-frame='14a'] { --metal-mid: #8a6636; --metal-deep: #3e2c17; }
+[data-frame='14b'] { --metal-mid: #8f7d42; --metal-deep: #41381a; }
+[data-frame='14c'] { --metal-mid: #a5654a; --metal-deep: #4a2619; }
+[data-frame='14d'] { --metal-mid: #8b929c; --metal-deep: #3a3e45; }
+[data-frame='14e'] { --metal-mid: #77602c; --metal-deep: #332a13; }
+[data-frame='14f'] { --metal-mid: #6e747b; --metal-deep: #2c3036; }
+
 /* Chunky pixel seams along the bars' inner edges. */
 .action-bar::after,
 .bottom-bar::before {

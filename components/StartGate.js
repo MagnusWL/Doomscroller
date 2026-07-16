@@ -1,8 +1,6 @@
 'use client';
 
-import { FRAMES } from '@/lib/frames';
-
-const GROUPS = ['Minimal', 'Pixel', 'Guld'];
+import { FRAMES, GROUPS } from '@/lib/frames';
 
 // Browsers won't let anything make a sound until the page has been clicked or
 // tapped, and scrolling doesn't count — a reader could wheel through the whole

@@ -72,6 +72,11 @@ body {
 .coin-sack.dragging { cursor: grabbing; }
 .coin-sack.dragging canvas { outline: 1px dashed rgba(245, 190, 60, 0.7); }
 
+/* Også kun her: en kontakt til at slukke sløret, så man kan se hvad der ligger
+   bagved. I appen er sløret altid tændt — det er hele spørgsmålet om vignetten
+   overhovedet nogensinde ses. */
+[data-back='off'] .vad-backdrop { display: none; }
+
 /* ── Panelet ──────────────────────────────────────────────────────────────── */
 .panel {
   flex: 1;
@@ -527,6 +532,30 @@ pre .k { color: #f5be3c; }
   --window-radius: 6px;
 }
 
+/* The six metals: 13b's frame in another colour, with a matching vignette
+   behind the ad — metal in the middle, dark brown at the edges, so a creative
+   that can't fill the window shows some of it.
+
+   --metal-mid and --metal-deep are the same two roles as in PALETTES in
+   lib/frames.js, and the only place the two lists overlap: the ornament is
+   painted on a canvas and needs them in JS, the vignette is a gradient and
+   needs them here. Change one, change the other. */
+[data-frame^='14'] {
+  --screen-bg: #0b0c0e;
+  --bar-bg: #0e1013;
+  --bar-blur: none;
+  --bar-line: rgba(255, 255, 255, 0.06);
+  --window-radius: 6px;
+  --window-bg: radial-gradient(ellipse 86% 66% at 50% 44%,
+    var(--metal-mid) 0%, var(--metal-deep) 36%, #1c1209 70%, #100c07 100%);
+}
+[data-frame='14a'] { --metal-mid: #8a6636; --metal-deep: #3e2c17; }
+[data-frame='14b'] { --metal-mid: #8f7d42; --metal-deep: #41381a; }
+[data-frame='14c'] { --metal-mid: #a5654a; --metal-deep: #4a2619; }
+[data-frame='14d'] { --metal-mid: #8b929c; --metal-deep: #3a3e45; }
+[data-frame='14e'] { --metal-mid: #77602c; --metal-deep: #332a13; }
+[data-frame='14f'] { --metal-mid: #6e747b; --metal-deep: #2c3036; }
+
 /* Chunky pixel seams along the bars' inner edges. */
 .action-bar::after,
 .bottom-bar::before {
@@ -773,8 +802,10 @@ pre .k { color: #f5be3c; }
     <div class="card">
       <h2>Reklamens format</h2>
       <div class="chips" id="aspectChips"></div>
-      <div class="note">Stand-in, ikke rigtige reklamer — men samme
-        <b>object-fit</b> og samme slørrede baggrund som appen bruger.</div>
+      <div class="row" style="margin-top:10px">
+        <label class="check"><input type="checkbox" id="blurToggle" checked> Slør bag reklamen</label>
+      </div>
+      <div class="note" id="backNote"></div>
     </div>
 
     <div class="card">
@@ -896,6 +927,7 @@ const state = {
   started: false,
   spendStyle: '1',
   price: 5,
+  blur: true,
 };
 
 const device = () => DEVICES.find(d => d.id === state.device);
@@ -1105,7 +1137,7 @@ function paintOrnament() {
   c.style.display = 'block';
   const rect = windowRect();
   if (rect && rect.w > 0 && rect.h > 0) {
-    window.Frames.drawOrnate(c, rect, state.frame === '13a');
+    window.Frames.drawOrnate(c, rect, state.frame);
   }
 }
 
@@ -1280,6 +1312,7 @@ function apply() {
   phone.style.setProperty('--safe-bottom', safeBottom() + 'px');
   phone.dataset.frame = state.frame;
   phone.dataset.sack = state.sack;
+  phone.dataset.back = state.blur ? 'on' : 'off';
   for (const k in state.vars) phone.style.setProperty(k, state.vars[k] + 'px');
 
   $('#notch').style.display = state.safe && d.top >= 40 ? 'block' : 'none';
@@ -1301,8 +1334,23 @@ function apply() {
     c.classList.toggle('on', c.dataset.id === state.spendStyle));
 
   paintOrnament();
+  backNote();
   readout();
   exportCss();
+}
+
+/* Hvad der faktisk ligger bag reklamen lige nu. Vignetten hører kun til de seks
+   metaller — de andre rammer har en flad bund. */
+function backNote() {
+  const metal = state.frame.indexOf('14') === 0;
+  $('#backNote').textContent = state.blur
+    ? (metal
+      ? 'Sløret ligger oven på vignetten. Sluk det for at se hvor meget af ' +
+        'vignetten der egentlig er tilbage at se.'
+      : 'Reklamens egne farver, slørret — som appen gør det i dag.')
+    : (metal
+      ? 'Vignetten alene: ' + state.frame + '-metallet i midten, mørkebrunt ude ved kanten.'
+      : 'Intet slør. Vinduets flade bund.');
 }
 
 /* ── Panelet ──────────────────────────────────────────────────────────────── */
@@ -1323,7 +1371,7 @@ function buildChips(host, items, onPick) {
 function buildGatePicker() {
   const host = $('#gatePicker');
   host.innerHTML = '';
-  for (const group of ['Minimal', 'Pixel', 'Guld']) {
+  for (const group of window.Frames.GROUPS) {
     const g = document.createElement('div');
     g.className = 'frame-group';
     g.innerHTML = '<div class="frame-group-name">' + group + '</div>';
@@ -1390,6 +1438,7 @@ buildChips($('#spendChips'), SPEND_STYLES, id => {
 });
 
 $('#safeToggle').addEventListener('change', e => { state.safe = e.target.checked; apply(); });
+$('#blurToggle').addEventListener('change', e => { state.blur = e.target.checked; apply(); });
 
 /* Træk i sækken: skærmens koordinater ind, hjørnets skub ud. Derfor kan det du
    gør med musen skrives ned som CSS bagefter. */
