@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadVideoAd } from '@/lib/vast';
 import { shouldCover } from '@/lib/fit';
+import { pictureBounds, placePicture } from '@/lib/letterbox';
+
+const BACKDROP_ZOOM = 1.18; // past the edges: a blur this wide leaves them soft
 
 const px = url => { new Image().src = url; };
 
@@ -34,20 +37,47 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const [noFill, setNoFill] = useState(false);
   const [muted, setMuted] = useState(true);
   const [skipSecondsLeft, setSkipSecondsLeft] = useState(null);
-  // Assume letterbox until the file's real shape is known: growing into the
-  // window is less jarring to watch than being cropped back out of it.
-  const [cover, setCover] = useState(false);
+  // Where the picture actually is inside the file, and how big the window is.
+  // Null until measured; the ad is laid out by CSS in the meantime.
+  const [bounds, setBounds] = useState(null);
+  const [box, setBox] = useState(null);
 
-  // The VAST attributes describe the encode, not necessarily the picture, so
-  // the decoded frame is what decides.
-  const handleLoadedMetadata = () => {
-    const video = videoRef.current;
+  useEffect(() => {
+    if (!ad) return;
+    let live = true;
+    pictureBounds(ad.media.url).then(result => {
+      if (live) setBounds(result);
+    });
+    return () => { live = false; };
+  }, [ad]);
+
+  useEffect(() => {
     const root = rootRef.current;
-    if (!video || !root || !video.videoWidth) return;
-    const box = root.getBoundingClientRect();
-    if (!box.width || !box.height) return;
-    setCover(shouldCover(video.videoWidth / video.videoHeight, box.width / box.height));
-  };
+    if (!root) return;
+    const measure = () => {
+      const r = root.getBoundingClientRect();
+      if (r.width && r.height) setBox({ w: r.width, h: r.height });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [ad]);
+
+  // The file's declared shape is the canvas the advertiser used, not the shape
+  // of what they drew on it. Fit the picture.
+  const layout = bounds && box
+    ? (() => {
+        const { file, picture } = bounds;
+        const mode = shouldCover(picture.w / picture.h, box.w / box.h) ? 'cover' : 'contain';
+        return {
+          mode,
+          media: placePicture({ file, picture, box, mode }),
+          backdrop: placePicture({ file, picture, box, mode: 'cover', zoom: BACKDROP_ZOOM }),
+        };
+      })()
+    : null;
+  const covers = layout ? layout.mode === 'cover' : false;
 
   // Held in a ref so a caller passing an inline arrow doesn't rebuild the
   // observer on every render.
@@ -160,12 +190,13 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
       onClick={handleRootClick}
     >
       {/* The same footage, blown up and blurred to fill the window behind a
-          letterboxed ad. A covering ad hides it completely, so it isn't
-          rendered — that's a whole video decode saved. */}
-      {!cover && (
+          letterboxed ad. An ad that covers hides it completely, so it isn't
+          rendered — a whole video decode saved. */}
+      {!covers && (
         <video
           ref={backdropRef}
           className="vad-backdrop"
+          style={layout ? layout.backdrop : undefined}
           src={ad.media.url}
           muted
           playsInline
@@ -178,13 +209,12 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
       <video
         ref={videoRef}
         className="vad-media"
-        style={{ objectFit: cover ? 'cover' : 'contain' }}
+        style={layout ? layout.media : undefined}
         src={ad.media.url}
         muted={muted}
         playsInline
         preload="auto"
         autoPlay
-        onLoadedMetadata={handleLoadedMetadata}
         onPlaying={handlePlaying}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
