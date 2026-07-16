@@ -12,11 +12,17 @@ export function useSlideProgress(feedRef, onAdvance) {
   onAdvanceRef.current = onAdvance;
   const observerRef = useRef(null);
 
+  // React attaches refs before it runs effects, so the first batch of slides
+  // registers while there is still no observer to hand them to. They wait here
+  // until there is. Dropping them instead cost a coin per slide until the feed
+  // appended its second batch.
+  const waiting = useRef(new Set());
+
   useEffect(() => {
     const feed = feedRef.current;
     if (!feed) return;
 
-    observerRef.current = new IntersectionObserver(entries => {
+    const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         const idx = Number(entry.target.dataset.index);
@@ -27,10 +33,19 @@ export function useSlideProgress(feedRef, onAdvance) {
       }
     }, { root: feed, threshold: 0.6 });
 
-    return () => observerRef.current.disconnect();
+    observerRef.current = observer;
+    for (const el of waiting.current) observer.observe(el);
+    waiting.current.clear();
+
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
   }, [feedRef]);
 
   return useCallback(el => {
-    if (el && observerRef.current) observerRef.current.observe(el);
+    if (!el) return;
+    if (observerRef.current) observerRef.current.observe(el);
+    else waiting.current.add(el);
   }, []);
 }
