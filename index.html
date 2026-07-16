@@ -29,53 +29,37 @@
 
   .slide {
     height: 100dvh;
+    width: 100%;
     scroll-snap-align: start;
     scroll-snap-stop: always;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
     position: relative;
   }
 
-  /* Ad container */
+  /* Ad container: 2 banners stacked vertically per slide */
   .ad {
     width: 100%;
-    max-width: 420px;
     height: 100%;
-    max-height: 780px;
-    border-radius: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    overflow: hidden;
   }
 
   /* Adcash renders its banner iframe into this slot. */
   .ac-slot {
+    width: 100%;
+    height: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
   }
 
-  .ad-meta {
-    font-size: 13px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  /* Video ad slide: the ad itself fills the frame, like a feed post. */
+  /* Video ad slide: edge-to-edge like the banner slides. */
   .vad {
     width: 100%;
-    max-width: 420px;
     height: 100%;
-    max-height: 780px;
-    border-radius: 20px;
-    overflow: hidden;
     position: relative;
     background: #000;
     display: flex;
@@ -91,9 +75,10 @@
     object-fit: contain;
   }
 
+  /* Clears the fixed braincell bar across the top. */
   .vad-badge {
     position: absolute;
-    top: 12px;
+    top: calc(env(safe-area-inset-top) + 66px);
     left: 12px;
     padding: 4px 10px;
     border-radius: 999px;
@@ -107,7 +92,7 @@
 
   .vad-sound {
     position: absolute;
-    bottom: 12px;
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
     left: 12px;
     width: 40px;
     height: 40px;
@@ -123,7 +108,7 @@
 
   .vad-skip {
     position: absolute;
-    bottom: 12px;
+    bottom: calc(env(safe-area-inset-bottom) + 12px);
     right: 12px;
     height: 40px;
     padding: 0 16px;
@@ -142,54 +127,6 @@
     cursor: default;
   }
 
-  /* Inspirational image slide */
-  .insp {
-    width: 100%;
-    height: 100%;
-    border-radius: 20px;
-    overflow: hidden;
-    position: relative;
-    background-size: cover;
-    background-position: center;
-  }
-
-  .insp::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%);
-  }
-
-  .insp-quote {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: flex-end;
-    padding: 32px;
-    z-index: 1;
-  }
-
-  .insp-quote blockquote {
-    font-size: clamp(20px, 5.5vw, 30px);
-    font-weight: 700;
-    line-height: 1.3;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
-  }
-
-  /* Fixed chrome over the feed */
-  .counter {
-    position: fixed;
-    top: calc(env(safe-area-inset-top) + 16px);
-    left: 16px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    pointer-events: none;
-  }
-
   .hint {
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom) + 20px);
@@ -201,12 +138,94 @@
     transition: opacity 0.4s;
   }
   .hint.gone { opacity: 0; }
+
+  .brain-stats {
+    position: fixed;
+    top: env(safe-area-inset-top);
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .brain-stats .label {
+    opacity: 0.6;
+    margin-right: 4px;
+  }
+
+  .refill-btn {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    padding: 16px 28px;
+    border: none;
+    border-radius: 999px;
+    background: #fff;
+    color: #000;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+  .refill-btn.show { display: block; }
+
+  .yt-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.85);
+    align-items: center;
+    justify-content: center;
+  }
+  .yt-modal.show { display: flex; }
+
+  .yt-modal-box {
+    position: relative;
+    width: min(92vw, 640px);
+    aspect-ratio: 16 / 9;
+  }
+  .yt-modal-box iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    border-radius: 12px;
+  }
+
+  .yt-modal-close {
+    position: absolute;
+    top: -44px;
+    right: 0;
+    border: none;
+    background: none;
+    color: #fff;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
 
 <div id="feed"></div>
-<div class="counter"><span id="current">1</span> / <span id="total">0</span></div>
+<div class="brain-stats" id="brainStats"></div>
+<button class="refill-btn" id="refillBtn">🧠 Get more braincells</button>
+<div class="yt-modal" id="ytModal">
+  <div class="yt-modal-box">
+    <button class="yt-modal-close" id="ytModalClose">×</button>
+    <iframe id="ytFrame" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+  </div>
+</div>
 <div class="hint" id="hint">Swipe or press ↓ for the next ad</div>
 
 <script>
@@ -214,36 +233,12 @@
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
   const feed = document.getElementById('feed');
-  const currentEl = document.getElementById('current');
-  const totalEl = document.getElementById('total');
   const hint = document.getElementById('hint');
-
-  // Each slide gets its own hue so scrolling feels like distinct content.
-  const hue = i => (i * 47) % 360;
-
-  const QUOTES = [
-    "The only way to do great work is to love what you do.",
-    "It always seems impossible until it's done.",
-    "Believe you can and you're halfway there.",
-    "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-    "Your limitation—it's only your imagination.",
-    "Great things never come from comfort zones.",
-    "Dream it. Wish it. Do it.",
-    "Little things make big days.",
-    "Don't stop when you're tired. Stop when you're done.",
-    "Wake up with determination. Go to bed with satisfaction.",
-    "Do something today that your future self will thank you for.",
-    "Push yourself, because no one else is going to do it for you.",
-  ];
-
-  const quoteMarkup = () => {
-    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-    const imgSeed = Math.floor(Math.random() * 1000);
-    return `
-      <div class="insp" style="background-image:url('https://picsum.photos/seed/${imgSeed}/800/1400')">
-        <div class="insp-quote"><blockquote>&ldquo;${quote}&rdquo;</blockquote></div>
-      </div>`;
-  };
+  const brainStats = document.getElementById('brainStats');
+  const refillBtn = document.getElementById('refillBtn');
+  const ytModal = document.getElementById('ytModal');
+  const ytFrame = document.getElementById('ytFrame');
+  const ytModalClose = document.getElementById('ytModalClose');
 
   const AC_ZONE_ID = '11731342';
 
@@ -254,7 +249,8 @@
   // Video ad sources, tried in order until one fills. VAST is an IAB standard,
   // so a new network is one more entry here and nothing else.
   const VAST_TAGS = [
-    // Adcash In-stream Video zone 11731718.
+    // Adcash In-stream Video zone 11731718. Unlike the banner zone, this one
+    // fills on desktop as well as mobile.
     () => 'https://youradexchange.com/video/select.php?r=11731718',
     // Google's public sample tag, so the feed still shows video when Adcash has
     // nothing to serve. It earns nothing — drop it before this carries real traffic.
@@ -300,6 +296,23 @@
     return files.find(f => f.width <= 1280) || files[0] || null;
   }
 
+  const hmsToSeconds = hms => {
+    const parts = String(hms).split(':').map(Number);
+    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : NaN;
+  };
+
+  // VAST states skippability as either a timestamp or a percentage of the ad's
+  // own duration. Absent means the viewer must sit through it.
+  function parseSkipOffset(raw, duration) {
+    if (!raw) return null;
+    if (raw.trim().endsWith('%')) {
+      const pct = parseFloat(raw);
+      return isFinite(pct) && isFinite(duration) ? (duration * pct) / 100 : null;
+    }
+    const secs = hmsToSeconds(raw);
+    return isFinite(secs) ? secs : null;
+  }
+
   // Networks routinely answer with a Wrapper pointing at another ad server
   // instead of the ad itself, and every hop carries trackers that must fire
   // alongside the final ad's own.
@@ -338,23 +351,6 @@
         hmsToSeconds(nodeText(ad.querySelector('Duration')))
       ),
     };
-  }
-
-  const hmsToSeconds = hms => {
-    const parts = String(hms).split(':').map(Number);
-    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : NaN;
-  };
-
-  // VAST states skippability as either a timestamp or a percentage of the ad's
-  // own duration. Absent means the viewer must sit through it.
-  function parseSkipOffset(raw, duration) {
-    if (!raw) return null;
-    if (raw.trim().endsWith('%')) {
-      const pct = parseFloat(raw);
-      return isFinite(pct) && isFinite(duration) ? (duration * pct) / 100 : null;
-    }
-    const secs = hmsToSeconds(raw);
-    return isFinite(secs) ? secs : null;
   }
 
   async function loadVideoAd() {
@@ -411,8 +407,8 @@
       fireEvery(video.muted ? 'mute' : 'unmute');
     });
 
-    // Adcash serves minute-long creatives. Without a way out, one ad holds the
-    // feed hostage for as long as the advertiser paid for.
+    // Adcash serves creatives up to a minute long. Without a way out, one ad
+    // holds the feed hostage for as long as the advertiser paid for.
     const controls = [badge, sound];
     if (ad.skipAfter != null) {
       const skip = document.createElement('button');
@@ -446,7 +442,79 @@
     return video;
   }
 
+  // Real, verified-embeddable lectures on famously dry subjects.
+  const BORING_LECTURES = [
+    'wWnfJ0-xXRE', // MIT 8.01x Physics intro — Walter Lewin
+    'IJquEYhiq_U', // MIT cryptocurrency engineering — signatures & hashing
+    'kBdfcR-8hEY', // Harvard Justice — Michael Sandel, episode 1
+    'ZK3O402wf1c', // MIT 18.06 Linear Algebra — Gilbert Strang, lecture 1
+  ];
+
+  // Average human neuron count, used here as a "braincell" starting budget.
+  const BRAINCELLS_START = 86_000_000_000;
+  const LOSS_FRACTION_START = 0.08;  // % of remaining braincells lost on the first swipe
+  const LOSS_FRACTION_GROWTH = 1.3;  // that % grows 30% per swipe — empties out around swipe 10
+  const DEPLETED_THRESHOLD = BRAINCELLS_START * 0.005;
+
+  let braincells = BRAINCELLS_START;
+  let lossFraction = LOSS_FRACTION_START;
+  let lastSeenIndex = 1; // slide 1 is the initial view, not a swipe
+
+  function renderBrainStats() {
+    const speed = braincells * lossFraction;
+    brainStats.innerHTML =
+      `<span><span class="label">🧠 Braincells</span>${Math.round(braincells).toLocaleString()}</span>` +
+      `<span><span class="label">📈 Brainrot speed</span>${Math.round(speed).toLocaleString()}/scroll</span>`;
+  }
+
+  function decayBrain() {
+    if (braincells <= 0) return;
+    braincells -= braincells * lossFraction;
+    if (braincells < DEPLETED_THRESHOLD) braincells = 0;
+    lossFraction = Math.min(1, lossFraction * LOSS_FRACTION_GROWTH);
+    renderBrainStats();
+    if (braincells <= 0) refillBtn.classList.add('show');
+  }
+
+  refillBtn.addEventListener('click', () => {
+    refillBtn.classList.remove('show');
+    const id = BORING_LECTURES[Math.floor(Math.random() * BORING_LECTURES.length)];
+    ytFrame.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+    ytModal.classList.add('show');
+  });
+
+  ytModalClose.addEventListener('click', () => {
+    ytModal.classList.remove('show');
+    ytFrame.src = ''; // stop playback
+    braincells = BRAINCELLS_START;
+    lossFraction = LOSS_FRACTION_START;
+    renderBrainStats();
+  });
+
+  renderBrainStats();
+
   let count = 0;
+
+  const bannerSlotIds = index => [`ac-slot-${index}-a`, `ac-slot-${index}-b`];
+
+  const bannerMarkup = index => {
+    const [a, b] = bannerSlotIds(index);
+    return `
+      <div class="ad">
+        <div class="ac-slot" id="${a}"></div>
+        <div class="ac-slot" id="${b}"></div>
+      </div>`;
+  };
+
+  // Must run after the slides are in the DOM, since Adcash looks up renderIn by
+  // selector. Inline <script> tags don't execute when inserted via innerHTML,
+  // hence the programmatic call.
+  function runBanners(slotIds) {
+    if (typeof aclib === 'undefined') return;
+    for (const id of slotIds) {
+      aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
+    }
+  }
 
   function addSlides(n) {
     const frag = document.createDocumentFragment();
@@ -456,58 +524,26 @@
       const slide = document.createElement('section');
       slide.className = 'slide';
       slide.dataset.index = count;
-      slide.style.background =
-        `linear-gradient(160deg, hsl(${hue(count)} 70% 22%), hsl(${hue(count) + 40} 65% 10%))`;
 
-      // Every other slide is filler; the ad slides alternate video and banner.
-      if (count % 2 === 0) {
-        slide.innerHTML = quoteMarkup();
-      } else if (((count + 1) / 2) % 2 === 1) {
-        slide.innerHTML = '<div class="vad"><div class="ad-meta">Loading ad…</div></div>';
+      // Alternate video and the banner pair, so neither format carries the
+      // whole feed on its own.
+      if (count % 2 === 1) {
+        slide.innerHTML = '<div class="vad"></div>';
       } else {
-        const slotId = `ac-slot-${count}`;
-        slide.innerHTML = `
-          <div class="ad">
-            <div class="ac-slot" id="${slotId}"></div>
-            <div class="ad-meta">Ad ${count}</div>
-          </div>`;
-        newAdSlots.push(slotId);
+        slide.innerHTML = bannerMarkup(count);
+        newAdSlots.push(...bannerSlotIds(count));
       }
+
       frag.appendChild(slide);
     }
     feed.appendChild(frag);
-    totalEl.textContent = count;
     observeTail();
-
-    // Fill each new slot. Must run after the slides are in the DOM, since
-    // Adcash looks up renderIn by selector. Inline <script> tags don't
-    // execute when inserted via innerHTML, hence the programmatic call.
-    if (typeof aclib !== 'undefined') {
-      for (const id of newAdSlots) {
-        aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
-      }
-    }
+    runBanners(newAdSlots);
   }
 
-  // Track which ad is on screen for the counter. Root is the feed itself,
-  // since that's the scroll container (not the window).
-  const seen = new IntersectionObserver(entries => {
-    for (const e of entries) {
-      if (e.isIntersecting) currentEl.textContent = e.target.dataset.index;
-    }
-  }, { root: feed, threshold: 0.6 });
-
-  // Append more ads when the last one scrolls into view — endless feed.
-  const tail = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) {
-      tail.disconnect();
-      addSlides(5);
-    }
-  }, { root: feed, rootMargin: '400px 0px' });
-
-  // Requesting every ad up front would burn the advertiser's budget on
-  // impressions nobody sees, and a wall of autoplaying video gets throttled
-  // by the browser. So a video slide only fetches once it reaches the screen.
+  // Requesting every ad up front would spend advertiser budget on impressions
+  // nobody sees, and a wall of autoplaying video gets throttled by the browser.
+  // So a video slide only fetches once it reaches the screen.
   const videoSlides = new IntersectionObserver(entries => {
     for (const e of entries) {
       const box = e.target.querySelector('.vad');
@@ -526,15 +562,42 @@
 
   async function fillVideoSlide(box) {
     const ad = await loadVideoAd();
-    // An unfilled slot would otherwise sit as a dead black slide mid-feed.
-    if (!ad) box.closest('.slide').innerHTML = quoteMarkup();
-    else playAd(box, ad);
+    if (ad) {
+      playAd(box, ad);
+      return;
+    }
+    // No video to show: fall back to the banner pair rather than leave a dead
+    // black slide, so the slot still earns.
+    const slide = box.closest('.slide');
+    const index = slide.dataset.index;
+    slide.innerHTML = bannerMarkup(index);
+    runBanners(bannerSlotIds(index));
   }
+
+  // Append more ads when the last one scrolls into view — endless feed.
+  const tail = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      tail.disconnect();
+      addSlides(5);
+    }
+  }, { root: feed, rootMargin: '400px 0px' });
+
+  // Decay the braincell counter once per newly-reached slide, forward only.
+  const progress = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const idx = Number(e.target.dataset.index);
+      if (idx > lastSeenIndex) {
+        lastSeenIndex = idx;
+        decayBrain();
+      }
+    }
+  }, { root: feed, threshold: 0.6 });
 
   function observeTail() {
     const slides = feed.querySelectorAll('.slide');
     slides.forEach(s => {
-      seen.observe(s);
+      progress.observe(s);
       if (s.querySelector('.vad')) videoSlides.observe(s);
     });
     tail.observe(slides[slides.length - 1]);
