@@ -8,6 +8,14 @@
      to do it. Change one and the other has to follow. */
   --frame-x: 32px;
   --frame-y: 40px;
+
+  /* Move and resize the sack with these four. The engine reads the canvas box
+     and scales both the sack art and the coins to fit it, so the size is only
+     ever this — nothing in the component or the engine needs touching. */
+  --sack-w: 62px;
+  --sack-h: 90px;
+  --sack-left: var(--frame-x);
+  --sack-top: 8px;
 }
 
 html, body {
@@ -115,12 +123,12 @@ html, body {
   pointer-events: none;
 }
 
-/* Positioned against the window, which the frame has already inset. */
+/* Right, because the sack hangs over the window's left corner. */
 .vad-badge {
   position: absolute;
   z-index: 2;
   top: 12px;
-  left: 12px;
+  right: 12px;
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.6);
@@ -198,7 +206,7 @@ html, body {
   z-index: 11;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   padding: env(safe-area-inset-top) 10px 0;
   background: rgba(0, 0, 0, 0.55);
@@ -236,20 +244,34 @@ html, body {
   font-size: 15px;
 }
 
-.coin-counter {
+/* Hangs below the bar with its left edge flush with the ad window's, per the
+   handoff. It reaches over the window's top corner: the sack is taller than the
+   frame's gap, and it's the one thing meant to sit on the ad rather than beside
+   it. */
+.coin-sack {
+  position: fixed;
+  z-index: 12;
+  top: calc(env(safe-area-inset-top) + var(--bar-h) + var(--sack-top));
+  left: var(--sack-left);
   display: flex;
-  align-items: baseline;
-  gap: 5px;
-  font-variant-numeric: tabular-nums;
+  align-items: flex-start;
+  gap: 8px;
   pointer-events: none;
-  white-space: nowrap;
 }
-.coin-counter .coin-value {
-  font-size: 13px;
+
+.coin-sack canvas {
+  width: var(--sack-w);
+  height: var(--sack-h);
+  display: block;
 }
-.coin-counter .label {
-  font-size: 10px;
-  opacity: 0.6;
+
+/* Gold, and staying gold — the client picked it. */
+.coin-sack .coin-value {
+  margin-top: 3px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: #f5be3c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 
 /* The bar already carries the dark backing, so the controls on it lift off

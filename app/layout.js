@@ -38,6 +38,13 @@ export default function RootLayout({ children }) {
           src="https://acscdn.com/script/aclib.js"
           strategy="afterInteractive"
         />
+        {/* 2D physics for the coin sack. The engine reads it off window, so it
+            loads the same way aclib does and CoinSack waits for it. */}
+        <Script
+          id="matter"
+          src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"
+          strategy="afterInteractive"
+        />
         {children}
       </body>
     </html>
