@@ -3,6 +3,9 @@ import './globals.css';
 
 export const metadata = {
   title: 'Doomscroller — Ad Prototype',
+  other: {
+    clckd: '43e44410229c171edc44eeecddef3016',
+  },
 };
 
 export const viewport = {
