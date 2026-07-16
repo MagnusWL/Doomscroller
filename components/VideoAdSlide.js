@@ -9,15 +9,21 @@ const px = url => { new Image().src = url; };
 // nobody sees, and a wall of autoplaying video gets throttled by the
 // browser. So this only fetches once it reaches the screen, and pauses
 // again whenever it scrolls out of view.
-export default function VideoAdSlide({ feedRef, onSkip, onNoFill }) {
+export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const rootRef = useRef(null);
   const videoRef = useRef(null);
   const fired = useRef(new Set());
 
   const [ad, setAd] = useState(null);
   const [requested, setRequested] = useState(false);
+  const [noFill, setNoFill] = useState(false);
   const [muted, setMuted] = useState(true);
   const [skipSecondsLeft, setSkipSecondsLeft] = useState(null);
+
+  // Held in a ref so a caller passing an inline arrow doesn't rebuild the
+  // observer on every render.
+  const onFilledRef = useRef(onFilled);
+  onFilledRef.current = onFilled;
 
   useEffect(() => {
     const feed = feedRef.current;
@@ -30,8 +36,12 @@ export default function VideoAdSlide({ feedRef, onSkip, onNoFill }) {
         if (!requested) {
           setRequested(true);
           loadVideoAd().then(result => {
-            if (result) setAd(result);
-            else onNoFill();
+            if (result) {
+              setAd(result);
+              onFilledRef.current();
+            } else {
+              setNoFill(true);
+            }
           });
         } else if (videoRef.current) {
           videoRef.current.play().catch(() => {});
@@ -43,7 +53,7 @@ export default function VideoAdSlide({ feedRef, onSkip, onNoFill }) {
 
     observer.observe(root);
     return () => observer.disconnect();
-  }, [feedRef, requested, onNoFill]);
+  }, [feedRef, requested]);
 
   // Matches the disabled "Skip in N" countdown the original imperative
   // player showed before the first timeupdate tick.
@@ -51,7 +61,15 @@ export default function VideoAdSlide({ feedRef, onSkip, onNoFill }) {
     if (ad && ad.skipAfter != null) setSkipSecondsLeft(Math.ceil(ad.skipAfter));
   }, [ad]);
 
-  if (!ad) return <div className="vad" ref={rootRef} />;
+  // Every network came back empty. There's no banner to fall back to any more,
+  // so say so rather than leaving a black slide with no explanation.
+  if (!ad) {
+    return (
+      <div className="vad" ref={rootRef}>
+        {noFill && <span className="vad-empty">No ad available</span>}
+      </div>
+    );
+  }
 
   // Scrolling back to a slide resumes the same video, so every milestone
   // fires at most once per ad — an impression counted twice is a billing lie.

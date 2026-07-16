@@ -2,9 +2,3 @@ node_modules
 .next
 .vercel
 *.log
-.DS_Store
-
-# Nicolais lokale noter og arbejdsaftaler - hoerer ikke hjemme i Magnus' repo
-.claude/
-CLAUDE.md
-URL TIL NICOS BRANCH.txt
