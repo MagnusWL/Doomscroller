@@ -73,7 +73,13 @@ export default function AdCoinCounter({ coins }) {
   useEffect(() => {
     const wake = () => {
       const sack = sackRef.current;
-      if (sack && sack.audio && sack.audio.state === 'suspended') sack.audio.resume();
+      if (!sack) return;
+      // Build it here if it doesn't exist yet: made inside a gesture it starts
+      // running, whereas the engine makes it on the first coin, which is before
+      // anything has been touched. Then resume regardless of what it claims its
+      // state is — the call is free and the state isn't always honest.
+      sack._ensureAudio();
+      if (sack.audio && sack.audio.state !== 'running') sack.audio.resume();
     };
     const events = ['pointerdown', 'touchend', 'keydown'];
     for (const e of events) window.addEventListener(e, wake, { passive: true });
