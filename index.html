@@ -1,23 +1,183 @@
 <!DOCTYPE html>
-<html lang="da">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min hjemmeside</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Doomscroller — Ad Prototype</title>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9316425515738331"
+     crossorigin="anonymous"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  /* The scroller: one full screen per ad, snapped like TikTok */
+  #feed {
+    height: 100dvh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+  #feed::-webkit-scrollbar { display: none; }
+
+  .slide {
+    height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+
+  /* Ad container */
+  .ad {
+    width: 100%;
+    max-width: 420px;
+    height: 100%;
+    max-height: 780px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+  }
+
+  .ad .adsbygoogle {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ad-meta {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Fixed chrome over the feed */
+  .counter {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 16px);
+    left: 16px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+
+  .hint {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + 20px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  .hint.gone { opacity: 0; }
+</style>
 </head>
 <body>
 
-   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9316425515738331"
-     crossorigin="anonymous"></script>
-<!-- Doomscrollers -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-9316425515738331"
-     data-ad-slot="1587507855"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
+<div id="feed"></div>
+<div class="counter"><span id="current">1</span> / <span id="total">0</span></div>
+<div class="hint" id="hint">Swipe or press ↓ for the next ad</div>
+
 <script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
+  // Always start at the first ad, even after a reload.
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+  const feed = document.getElementById('feed');
+  const currentEl = document.getElementById('current');
+  const totalEl = document.getElementById('total');
+  const hint = document.getElementById('hint');
+
+  // Each slide gets its own hue so scrolling feels like distinct content.
+  const hue = i => (i * 47) % 360;
+
+  let count = 0;
+
+  function addSlides(n) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < n; i++) {
+      count++;
+      const slide = document.createElement('section');
+      slide.className = 'slide';
+      slide.dataset.index = count;
+      slide.style.background =
+        `linear-gradient(160deg, hsl(${hue(count)} 70% 22%), hsl(${hue(count) + 40} 65% 10%))`;
+      slide.innerHTML = `
+        <div class="ad">
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-9316425515738331"
+               data-ad-slot="1587507855"
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <div class="ad-meta">Ad ${count}</div>
+        </div>`;
+      frag.appendChild(slide);
+    }
+    feed.appendChild(frag);
+    totalEl.textContent = count;
+    observeTail();
+
+    // Ask AdSense to fill each newly inserted unit.
+    for (const ins of feed.querySelectorAll('ins.adsbygoogle:not([data-pushed])')) {
+      ins.dataset.pushed = '1';
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    }
+  }
+
+  // Track which ad is on screen for the counter. Root is the feed itself,
+  // since that's the scroll container (not the window).
+  const seen = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (e.isIntersecting) currentEl.textContent = e.target.dataset.index;
+    }
+  }, { root: feed, threshold: 0.6 });
+
+  // Append more ads when the last one scrolls into view — endless feed.
+  const tail = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      tail.disconnect();
+      addSlides(5);
+    }
+  }, { root: feed, rootMargin: '400px 0px' });
+
+  function observeTail() {
+    const slides = feed.querySelectorAll('.slide');
+    slides.forEach(s => seen.observe(s));
+    tail.observe(slides[slides.length - 1]);
+  }
+
+  // Arrow keys / space, for desktop.
+  window.addEventListener('keydown', e => {
+    const step = { ArrowDown: 1, ArrowUp: -1, ' ': 1, PageDown: 1, PageUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    feed.scrollBy({ top: step * feed.clientHeight, behavior: 'smooth' });
+  });
+
+  feed.addEventListener('scroll', () => hint.classList.add('gone'), { once: true });
+
+  addSlides(8);
 </script>
+
 </body>
 </html>
