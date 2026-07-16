@@ -18,18 +18,29 @@ const px = url => { new Image().src = url; };
 // nobody sees, and a wall of autoplaying video gets throttled by the
 // browser. So this only fetches once it reaches the screen, and pauses
 // again whenever it scrolls out of view.
-export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
+export default function VideoAdSlide({ feedRef, started, muted, onMutedChange, onSkip, onFilled }) {
   const rootRef = useRef(null);
   const videoRef = useRef(null);
   const backdropRef = useRef(null);
   const fired = useRef(new Set());
 
+  const onMutedChangeRef = useRef(onMutedChange);
+  onMutedChangeRef.current = onMutedChange;
+
   // The backdrop is the same footage, so it starts and stops with the ad
-  // rather than decoding on its own schedule.
+  // rather than decoding on its own schedule. It's always silent.
   const playAll = () => {
-    for (const ref of [videoRef, backdropRef]) {
-      if (ref.current) ref.current.play().catch(() => {});
-    }
+    if (backdropRef.current) backdropRef.current.play().catch(() => {});
+    const video = videoRef.current;
+    if (!video) return;
+    video.play().catch(() => {
+      // Refused because it would make a sound. The gate is meant to have
+      // bought that right already, but a browser that disagrees should cost
+      // the sound, not the ad — a silent ad beats a frozen frame.
+      video.muted = true;
+      onMutedChangeRef.current(true);
+      video.play().catch(() => {});
+    });
   };
   const pauseAll = () => {
     for (const ref of [videoRef, backdropRef]) {
@@ -40,7 +51,6 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const [ad, setAd] = useState(null);
   const [requested, setRequested] = useState(false);
   const [noFill, setNoFill] = useState(false);
-  const [muted, setMuted] = useState(true);
   const [skipSecondsLeft, setSkipSecondsLeft] = useState(null);
   // undefined while the probe is still running, null once it has come back
   // empty — the two mean different things, and only the first is worth waiting
@@ -133,11 +143,13 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
 
   // Playback follows what's actually on screen, never the browser's autoplay:
   // an ad fetched a screen early would otherwise start on its own and bill the
-  // advertiser for an impression nobody could have seen.
+  // advertiser for an impression nobody could have seen. Nothing plays before
+  // the gate either — an ad running behind it would be spending an impression
+  // on a covered screen.
   useEffect(() => {
     const feed = feedRef.current;
     const root = rootRef.current;
-    if (!feed || !root || !ad) return;
+    if (!feed || !root || !ad || !started) return;
 
     const observer = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting) playAll();
@@ -146,7 +158,7 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
 
     observer.observe(root);
     return () => observer.disconnect();
-  }, [feedRef, ad]);
+  }, [feedRef, ad, started]);
 
   // Matches the disabled "Skip in N" countdown the original imperative
   // player showed before the first timeupdate tick.
@@ -195,11 +207,9 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
 
   const toggleMute = e => {
     e.stopPropagation();
-    setMuted(prev => {
-      const next = !prev;
-      fireEvery(next ? 'mute' : 'unmute');
-      return next;
-    });
+    const next = !muted;
+    fireEvery(next ? 'mute' : 'unmute');
+    onMutedChange(next);
   };
 
   const handleSkipClick = e => {

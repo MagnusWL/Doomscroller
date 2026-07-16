@@ -326,6 +326,55 @@ html, body {
   text-align: center;
 }
 
+/* Above everything, including the inventory: nothing behind it should be
+   reachable before the click that lets the page make a sound. */
+.start-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.start-gate-inner {
+  text-align: center;
+  max-width: 300px;
+}
+
+.start-gate-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.start-gate-copy {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.start-btn {
+  margin-top: 26px;
+  padding: 13px 40px;
+  border: 0;
+  border-radius: 999px;
+  background: #f5be3c;
+  color: #1a1206;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.start-gate-fine {
+  margin-top: 14px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
 .inv-overlay {
   position: fixed;
   inset: 0;

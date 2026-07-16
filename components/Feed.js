@@ -17,6 +17,7 @@ import AutoScrollToggle from '@/components/AutoScrollToggle';
 import BuyAdButton from '@/components/BuyAdButton';
 import InventoryButton from '@/components/InventoryButton';
 import InventoryOverlay from '@/components/InventoryOverlay';
+import StartGate from '@/components/StartGate';
 
 export default function Feed() {
   const feedRef = useRef(null);
@@ -26,6 +27,11 @@ export default function Feed() {
   const [buying, setBuying] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
   const [filled, setFilled] = useState(() => new Set());
+  const [started, setStarted] = useState(false);
+  // One setting for the whole feed rather than one per slide: muting an ad you
+  // don't want to hear should mean the next one is quiet too. Starts on,
+  // because the gate's click is what earns the right to play it.
+  const [muted, setMuted] = useState(false);
 
   const coins = useAdCoins();
   const observeSlide = useSlideProgress(feedRef, coins.award);
@@ -96,6 +102,9 @@ export default function Feed() {
             ) : (
               <VideoAdSlide
                 feedRef={feedRef}
+                started={started}
+                muted={muted}
+                onMutedChange={setMuted}
                 onSkip={handleSkip}
                 onFilled={() => markFilled(id)}
               />
@@ -125,6 +134,11 @@ export default function Feed() {
         items={inventory.items}
         onClose={() => setInventoryOpen(false)}
       />
+
+      {/* Over the feed rather than instead of it, so the first ad is fetched
+          and measured while the gate is still up and is there on the first
+          swipe. */}
+      {!started && <StartGate onStart={() => setStarted(true)} />}
     </>
   );
 }
