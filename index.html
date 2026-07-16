@@ -67,11 +67,33 @@
     transition: opacity 0.4s;
   }
   .hint.gone { opacity: 0; }
+
+  .brain-stats {
+    position: fixed;
+    top: env(safe-area-inset-top);
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .brain-stats .label {
+    opacity: 0.6;
+    margin-right: 4px;
+  }
 </style>
 </head>
 <body>
 
 <div id="feed"></div>
+<div class="brain-stats" id="brainStats"></div>
 <div class="hint" id="hint">Swipe or press ↓ for the next ad</div>
 
 <script>
@@ -80,8 +102,32 @@
 
   const feed = document.getElementById('feed');
   const hint = document.getElementById('hint');
+  const brainStats = document.getElementById('brainStats');
 
   const AC_ZONE_ID = '11731342';
+
+  // Average human neuron count, used here as a "braincell" starting budget.
+  const BRAINCELLS_START = 86_000_000_000;
+  const BRAINROT_START = 1_000_000;  // braincells lost on the first swipe
+  const BRAINROT_GROWTH = 1.08;      // brainrot speed grows 8% per swipe
+
+  let braincells = BRAINCELLS_START;
+  let brainrotSpeed = BRAINROT_START;
+  let lastSeenIndex = 1; // slide 1 is the initial view, not a swipe
+
+  function renderBrainStats() {
+    brainStats.innerHTML =
+      `<span><span class="label">🧠 Braincells</span>${Math.round(braincells).toLocaleString()}</span>` +
+      `<span><span class="label">📈 Brainrot speed</span>${Math.round(brainrotSpeed).toLocaleString()}/scroll</span>`;
+  }
+
+  function decayBrain() {
+    braincells = Math.max(0, braincells - brainrotSpeed);
+    brainrotSpeed *= BRAINROT_GROWTH;
+    renderBrainStats();
+  }
+
+  renderBrainStats();
 
   let count = 0;
 
@@ -126,8 +172,21 @@
     }
   }, { root: feed, rootMargin: '400px 0px' });
 
+  // Decay the braincell counter once per newly-reached slide, forward only.
+  const progress = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const idx = Number(e.target.dataset.index);
+      if (idx > lastSeenIndex) {
+        lastSeenIndex = idx;
+        decayBrain();
+      }
+    }
+  }, { root: feed, threshold: 0.6 });
+
   function observeTail() {
     const slides = feed.querySelectorAll('.slide');
+    slides.forEach(s => progress.observe(s));
     tail.observe(slides[slides.length - 1]);
   }
 
