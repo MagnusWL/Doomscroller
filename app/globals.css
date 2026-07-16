@@ -52,15 +52,20 @@ html, body {
 .fake-ad {
   width: 100%;
   height: 100%;
+  /* Flex and grid items refuse to shrink below their content, and this one's
+     content is a fixed 1080px wide. Without this the slide gets pushed out. */
+  min-width: 0;
   position: relative;
   overflow: hidden;
-  display: grid;
-  place-items: center;
 }
 
+/* Out of flow on purpose: centring it by layout would centre it inside a track
+   auto-sized to the stage's own 1080x1920, which overflows the slide rather
+   than fitting in it. Absolute keeps the stage from having any say in layout. */
 .fake-ad-stage {
-  position: relative;
-  flex: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   transform-origin: center;
 }
 

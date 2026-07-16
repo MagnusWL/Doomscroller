@@ -386,7 +386,11 @@ export default function FakeAdSlide({ feedRef, config }) {
       <div
         className="fake-ad-stage"
         ref={stageRef}
-        style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${scale})` }}
+        style={{
+          width: STAGE_W,
+          height: STAGE_H,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+        }}
       >
         <ConfigCtx.Provider value={{ ...cfg, pal }}>
           <Scene progress={progress} localTime={localTime} />
