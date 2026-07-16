@@ -107,9 +107,9 @@ export default function Feed() {
 
       <ScrollHint visible={hintVisible} />
 
-      <div className="action-rail">
+      <div className="action-bar">
         <AdCoinCounter coins={coins.coins} />
-        <div className="rail-actions">
+        <div className="bar-actions">
           <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
           <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
           <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
