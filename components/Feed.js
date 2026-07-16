@@ -12,6 +12,7 @@ import LectureModal from '@/components/LectureModal';
 import ScrollHint from '@/components/ScrollHint';
 import AdSlide from '@/components/AdSlide';
 import VideoAdSlide from '@/components/VideoAdSlide';
+import FakeAdSlide from '@/components/FakeAdSlide';
 
 export default function Feed() {
   const feedRef = useRef(null);
@@ -63,7 +64,9 @@ export default function Feed() {
       <div id="feed" ref={feedRef} onScroll={() => setHintVisible(false)}>
         {slides.map(s => (
           <section key={s.id} className="slide" data-index={s.id} ref={observeSlide}>
-            {s.type === 'video' ? (
+            {s.type === 'fake' ? (
+              <FakeAdSlide feedRef={feedRef} />
+            ) : s.type === 'video' ? (
               <VideoAdSlide
                 feedRef={feedRef}
                 onSkip={handleSkip}
