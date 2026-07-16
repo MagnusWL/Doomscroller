@@ -5,6 +5,7 @@ import { useBrainrot } from '@/hooks/useBrainrot';
 import { useSlideProgress } from '@/hooks/useSlideProgress';
 import { useInfiniteSlides } from '@/hooks/useInfiniteSlides';
 import { randomLecture } from '@/lib/lectures';
+import { runVideoSlider } from '@/lib/adcash';
 import BrainStatsBar from '@/components/BrainStatsBar';
 import RefillButton from '@/components/RefillButton';
 import LectureModal from '@/components/LectureModal';
@@ -24,6 +25,12 @@ export default function Feed() {
   // Always start at the first ad, even after a reload.
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  }, []);
+
+  // The slider belongs to the page rather than any slide, so it starts once
+  // with the feed and Adcash decides where to put it.
+  useEffect(() => {
+    runVideoSlider();
   }, []);
 
   // Arrow keys / space, for desktop.
