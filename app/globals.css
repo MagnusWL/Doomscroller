@@ -150,6 +150,28 @@ html, body {
   margin-right: 4px;
 }
 
+.autoscroll-toggle {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  right: 12px;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.autoscroll-toggle input {
+  accent-color: #fff;
+  cursor: pointer;
+}
+
 .refill-btn {
   display: none;
   position: fixed;

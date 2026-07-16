@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useBrainrot } from '@/hooks/useBrainrot';
 import { useSlideProgress } from '@/hooks/useSlideProgress';
 import { useInfiniteSlides } from '@/hooks/useInfiniteSlides';
+import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { randomLecture } from '@/lib/lectures';
 import { runVideoSlider } from '@/lib/adcash';
 import BrainStatsBar from '@/components/BrainStatsBar';
@@ -12,15 +13,18 @@ import LectureModal from '@/components/LectureModal';
 import ScrollHint from '@/components/ScrollHint';
 import AdSlide from '@/components/AdSlide';
 import VideoAdSlide from '@/components/VideoAdSlide';
+import AutoScrollToggle from '@/components/AutoScrollToggle';
 
 export default function Feed() {
   const feedRef = useRef(null);
   const [hintVisible, setHintVisible] = useState(true);
   const [lectureVideoId, setLectureVideoId] = useState(null);
+  const [autoScroll, setAutoScroll] = useState(false);
 
   const brainrot = useBrainrot();
   const observeSlide = useSlideProgress(feedRef, brainrot.advance);
   const { slides, sentinelRef, markSlideAsBanner } = useInfiniteSlides(feedRef);
+  useAutoScroll(feedRef, autoScroll);
 
   // Always start at the first ad, even after a reload.
   useEffect(() => {
@@ -78,6 +82,7 @@ export default function Feed() {
       </div>
 
       <BrainStatsBar braincells={brainrot.braincells} brainrotSpeed={brainrot.brainrotSpeed} />
+      <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
       <RefillButton visible={brainrot.depleted} onClick={handleRefillClick} />
       <LectureModal videoId={lectureVideoId} onClose={handleCloseLecture} />
       <ScrollHint visible={hintVisible} />
