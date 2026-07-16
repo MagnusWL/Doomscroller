@@ -16,11 +16,17 @@
 (function () {
 // Coin-in-sack physics + gold render engine.
 // Taken as-is from the design handoff in "UI/Fra claude design/Mønt falder i
-// sæk". Its README says the engine is framework-agnostic and can be reused
-// directly — it only wants a canvas and Matter.js — so it is, unedited beyond
-// this note. The sack's interior geometry is measured into the ART constant
-// below; re-measure it if the art is ever re-exported. Styles other than
-// 'artsack' are earlier exploration and unused here.
+// sæk og køb". Its README says the engine is framework-agnostic and can be
+// reused directly — it only wants a canvas and Matter.js — so it is, unedited
+// beyond this note. The sack's interior geometry is measured into the ART
+// constant below; re-measure it if the art is ever re-exported. Styles other
+// than 'artsack' are earlier exploration and unused here.
+//
+// New in this revision: spendCoins(n) flies the top n coins out with a pixel
+// ka-ching (spendStyle 1–4 picks the variant), and coinSamples lays a random
+// real coin clip over the synth clink on every earn. Both are opt-in and the
+// app passes neither yet. Note that coinSamples are fetch()ed, which file://
+// forbids — public/lab hands them in as data: URIs for exactly that reason.
 //
 // Physics: Matter.js (loaded globally as window.Matter).
 // Rendering: custom canvas for premium gold coins (gradient body, sweeping
@@ -73,6 +79,8 @@ class CoinSack {
     this.glintEvery = opts.glintEvery || 620;
     this._lastGlint = 0;
     this.soundOn = opts.soundOn !== false;
+    this._sampleUrls = opts.coinSamples || null;
+    this.spendStyle = opts.spendStyle || 1;
     this.onCount = opts.onCount || (() => {});
     this.onFull = opts.onFull || (() => {});
     this.coins = [];
@@ -225,6 +233,29 @@ class CoinSack {
     this.onCount(0);
   }
 
+  // Spend n coins: lift the topmost coins up and out of the sack, play a soft
+  // "spent" sound, and wake the rest so the pile settles into the gap.
+  spendCoins(n) {
+    const M = window.Matter;
+    const now = performance.now();
+    const settled = this.coins
+      .filter((c) => c.isCoin && !c.spending && (c.isSleeping || (c.speed || 0) < 0.7))
+      .sort((a, b) => a.position.y - b.position.y);
+    const take = settled.slice(0, Math.max(0, Math.floor(n)));
+    for (const c of take) {
+      c.spending = true; c.spendAt = now; c.landed = true;
+      if (c.isSleeping) M.Sleeping.set(c, false);
+      M.Body.setVelocity(c, { x: (Math.random() * 2 - 1) * 2.4, y: -(9 + Math.random() * 5) });
+      M.Body.setAngularVelocity(c, (Math.random() * 2 - 1) * 0.45);
+    }
+    for (const c of this.coins) if (!c.spending && c.isSleeping) M.Sleeping.set(c, false);
+    this.count = Math.max(0, this.count - take.length);
+    if (this.count < this.fillCount) this.full = false;
+    this.onCount(this.count);
+    if (take.length) { this._ensureAudio(); this._spend(Math.min(0.35, 0.12 + take.length * 0.03)); }
+    return take.length;
+  }
+
   destroy() {
     this.destroyed = true;
     if (this._raf) cancelAnimationFrame(this._raf);
@@ -243,6 +274,8 @@ class CoinSack {
         coin.landed = true;
         const spd = Math.min(coin.speed || 0, 14);
         this._spark(coin.position.x, coin.position.y, spd);
+        this._ensureAudio();
+        this._playSample(0.24);
         if (now - this.lastClink > 45) {
           this.lastClink = now;
           this._clink(Math.min(0.12 + spd * 0.03, 0.55), coin.position.y / this.H);
@@ -295,8 +328,14 @@ class CoinSack {
       this.audio = new AC();
       const ac = this.audio;
       this.master = ac.createGain(); this.master.gain.value = 0.85; this.master.connect(ac.destination);
-      this.reverb = ac.createConvolver(); this.reverb.buffer = this._impulse(ac, 1.6, 2.4);
-      this.wet = ac.createGain(); this.wet.gain.value = 0.5; this.reverb.connect(this.wet); this.wet.connect(ac.destination);
+      this.reverb = ac.createConvolver(); this.reverb.buffer = this._impulse(ac, 1.1, 3.2);
+      this.wet = ac.createGain(); this.wet.gain.value = 0.3; this.reverb.connect(this.wet); this.wet.connect(ac.destination);
+      if (this._sampleUrls && !this._sampleBufs) {
+        this._sampleBufs = [];
+        this._sampleUrls.forEach((u) => {
+          fetch(u).then((r) => r.arrayBuffer()).then((ab) => ac.decodeAudioData(ab)).then((b) => this._sampleBufs.push(b)).catch(() => {});
+        });
+      }
     } catch (e) { this.audio = null; }
     if (this.audio && this.audio.state === 'suspended') this.audio.resume();
   }
@@ -342,6 +381,49 @@ class CoinSack {
     const base = 1650 - depth * 550 + (Math.random() * 2 - 1) * 90;
     this._voice(ac, 'triangle', base, t, vol, 0.004, 0.126, 0);
     this._voice(ac, 'triangle', base * 1.5, t, vol * 0.4, 0.004, 0.126, 0);
+  }
+
+  // soft descending "spent" cue (opposite of the rising earn clink)
+  _spend(vol) {
+    if (!this.soundOn) return;
+    const ac = this.audio; if (!ac) return;
+    const t = ac.currentTime, V = Math.min(vol, 0.4);
+    const fn = this['_spendFx' + (this.spendStyle || 1)] || this._spendFx1;
+    fn.call(this, ac, t, V);
+  }
+
+  // ka-ching spend cues — 4 nære afarter (A–D), square-waves, dry + punchy
+  _spendFx1(ac, t, V) { // A — grundtonen du valgte
+    this._voice(ac, 'square', 196, t, V * 0.7, 0.002, 0.06, 0);
+    this._voice(ac, 'square', 1319, t + 0.06, V * 0.9, 0.003, 0.15, 0.06);
+    this._voice(ac, 'square', 1760, t + 0.08, V * 0.5, 0.003, 0.17, 0.06);
+  }
+  _spendFx2(ac, t, V) { // B — lidt varmere/lavere
+    this._voice(ac, 'square', 175, t, V * 0.72, 0.002, 0.07, 0);
+    this._voice(ac, 'square', 1245, t + 0.055, V * 0.9, 0.003, 0.17, 0.06);
+    this._voice(ac, 'square', 1661, t + 0.075, V * 0.5, 0.003, 0.19, 0.06);
+  }
+  _spendFx3(ac, t, V) { // C — lysere top + lille sparkle
+    this._voice(ac, 'square', 208, t, V * 0.68, 0.002, 0.055, 0);
+    this._voice(ac, 'square', 1397, t + 0.055, V * 0.9, 0.003, 0.14, 0.06);
+    this._voice(ac, 'square', 1865, t + 0.07, V * 0.55, 0.003, 0.16, 0.06);
+    this._voice(ac, 'square', 2349, t + 0.075, V * 0.22, 0.002, 0.09, 0);
+  }
+  _spendFx4(ac, t, V) { // D — bredere interval + længere hale
+    this._voice(ac, 'square', 185, t, V * 0.72, 0.002, 0.07, 0);
+    this._voice(ac, 'square', 1319, t + 0.06, V * 0.9, 0.003, 0.18, 0.07);
+    this._voice(ac, 'square', 1976, t + 0.085, V * 0.5, 0.003, 0.2, 0.07);
+  }
+
+  // layer a random real coin-drop sample on top of the synth clink (earn only)
+  _playSample(vol) {
+    const ac = this.audio; if (!ac || !this._sampleBufs || !this._sampleBufs.length) return;
+    const b = this._sampleBufs[(Math.random() * this._sampleBufs.length) | 0];
+    const src = ac.createBufferSource(); src.buffer = b;
+    const g = ac.createGain(); g.gain.value = vol;
+    src.connect(g); g.connect(this.master || ac.destination);
+    if (this.reverb) { const s = ac.createGain(); s.gain.value = 0.06; g.connect(s); s.connect(this.reverb); }
+    src.start();
   }
 
   // three "lækre" takes on the classic clink (same character, richer)
@@ -421,7 +503,7 @@ class CoinSack {
 
       for (let i = this.coins.length - 1; i >= 0; i--) {
         const c = this.coins[i];
-        if (c.position.y > this.H + 90 || c.position.x < -90 || c.position.x > this.W + 90) {
+        if (c.position.y > this.H + 90 || c.position.x < -90 || c.position.x > this.W + 90 || (c.spending && (c.position.y < -30 || performance.now() - c.spendAt > 1300))) {
           M.World.remove(this.world, c);
           this.coins.splice(i, 1);
         }

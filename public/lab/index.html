@@ -697,7 +697,7 @@ pre .k { color: #f5be3c; }
         </div>
 
         <div class="bottom-bar">
-          <button class="action-btn"><span class="action-icon">🛒</span>Køb reklamen</button>
+          <button class="action-btn" id="buyAd"><span class="action-icon">🛒</span>Køb reklamen</button>
         </div>
 
         <canvas class="frame-ornament" id="ornament" aria-hidden="true"></canvas>
@@ -788,6 +788,24 @@ pre .k { color: #f5be3c; }
     </div>
 
     <div class="card">
+      <h2>Køb</h2>
+      <div class="row">
+        <label>Pris</label>
+        <input type="range" id="price" autocomplete="off" min="1" max="20" step="1" value="5">
+        <span class="num" id="priceNum">5 stk</span>
+      </div>
+      <div class="chips" id="spendChips" style="margin-top:9px"></div>
+      <div class="note">
+        Ka-ching-lyden, fire nære afarter — handoff'en peger på <b>A</b>. Sækken
+        bygges om når du skifter, for motoren læser varianten når den fødes.
+        <b>Køb reklamen</b> nede i telefonen gør det samme.
+      </div>
+      <div class="btns" style="margin-top:9px">
+        <button class="btn gold" id="buyBtn">Køb — løft fra toppen</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Tilbage i appen</h2>
       <div class="btns">
         <button class="btn gold" id="copyCss">Kopiér CSS</button>
@@ -801,6 +819,7 @@ pre .k { color: #f5be3c; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <script src="frames.js"></script>
+<script src="coin-samples.js"></script>
 <script src="coin-sack-engine.js"></script>
 <script>
 (function () {
@@ -858,6 +877,14 @@ const SLIDERS = [
   { k: '--sack-y',  label: 'Lodret',   min: -170, max: 240, host: '#sackSliders' },
 ];
 
+// Ka-ching'en når man køber. Fire nære afarter — handoff'en peger på A.
+const SPEND_STYLES = [
+  { id: '1', name: 'A', title: 'Grundtonen — handoff\'ens valg' },
+  { id: '2', name: 'B', title: 'Varmere og lavere' },
+  { id: '3', name: 'C', title: 'Lysere top, med en lille sparkle' },
+  { id: '4', name: 'D', title: 'Bredere interval og længere hale' },
+];
+
 const state = {
   device: 'iphone12',
   safe: true,
@@ -867,6 +894,8 @@ const state = {
   vars: Object.assign({}, DEFAULTS),
   coins: 0,
   started: false,
+  spendStyle: '1',
+  price: 5,
 };
 
 const device = () => DEVICES.find(d => d.id === state.device);
@@ -947,34 +976,43 @@ function watchSlides() {
 
 /* ── Sækken ───────────────────────────────────────────────────────────────── */
 
-const SACK = {
-  style: 'artsack',
-  art: {
-    bg: '../sack/sack-bg.png',
-    bgB: '../sack/sack-bg-b.png',
-    ringBack: '../sack/ring-back.png',
-    fg: '../sack/sack-fg.png',
-    ringFront: '../sack/ring-front.png',
-  },
-  fillCount: 14,
-  tempo: 0.85,
-  glintStyle: 'star',
-  soundStyle: 'classic',
-  soundOn: true,
-  restitution: 0.42,
-  friction: 0.58,
-  gravity: 1.5,
-  bodyScale: 0.72,
-  spin: 0.5,
-  density: 0.006,
-};
+/* En funktion frem for en konstant, fordi ka-ching-varianten kan skiftes mens
+   man kigger — og motoren læser den når den fødes, ikke løbende. */
+function sackOpts() {
+  return {
+    style: 'artsack',
+    art: {
+      bg: '../sack/sack-bg.png',
+      bgB: '../sack/sack-bg-b.png',
+      ringBack: '../sack/ring-back.png',
+      fg: '../sack/sack-fg.png',
+      ringFront: '../sack/ring-front.png',
+    },
+    fillCount: 14,
+    tempo: 0.85,
+    glintStyle: 'star',
+    soundStyle: 'classic',
+    // Ét af fjorten rigtige møntklip lægges oven på synth-klinket ved hver
+    // mønt. Kun hvilket klip er tilfældigt — der er aldrig stilhed. De er
+    // data:-URI'er; se coin-samples.js for hvorfor det ikke er filstier.
+    coinSamples: window.COIN_SAMPLES || null,
+    spendStyle: Number(state.spendStyle),
+    soundOn: true,
+    restitution: 0.42,
+    friction: 0.58,
+    gravity: 1.5,
+    bodyScale: 0.72,
+    spin: 0.5,
+    density: 0.006,
+  };
+}
 
 let sack = null;
 
 function buildSack() {
   if (sack) { try { sack.destroy(); } catch (e) {} sack = null; }
   if (!window.Matter || !window.CoinSack) return;
-  sack = new window.CoinSack($('#sack'), SACK);
+  sack = new window.CoinSack($('#sack'), sackOpts());
   // Mønter tjent mens den var væk hører stadig til i sækken.
   for (let i = 0; i < state.coins; i++) sack.addCoin();
 }
@@ -1000,6 +1038,18 @@ function drop(n) {
   audioNote();
 }
 
+/* Tallet er balancen; sækken er kun et billede af den. Den rummer fjorten
+   mønter, så et køb på tyve kan aldrig løfte mere end fjorten ud — og det er
+   som det skal være. Prisen trækkes fra tallet uanset hvad sækken kan vise. */
+function spend(n) {
+  const price = Math.min(n, state.coins);
+  if (!price) return;
+  state.coins -= price;
+  $('#coinValue').textContent = state.coins.toLocaleString('da-DK');
+  if (sack) sack.spendCoins(price);
+  audioNote();
+}
+
 /* Præcis den kur der ligger i AdCoinCounter, og som endnu aldrig er set virke:
    browseren nægter lyd før siden er rørt, og motoren bygger kun lydkonteksten
    én gang — ved fødslen, længe før nogen har rørt noget. Så byg den inde i et
@@ -1013,14 +1063,20 @@ function wake() {
 ['pointerdown', 'touchend', 'keydown'].forEach(e =>
   window.addEventListener(e, wake, { passive: true }));
 
+/* Motoren sluger en sample der ikke vil hentes — .catch(() => {}) og ikke et
+   ord i konsollen. Så antallet af afkodede klip er den eneste måde at se om de
+   fjorten rent faktisk kom med. De afkodes efter tur, så tallet vokser lidt
+   efter det første klik. */
 function audioNote() {
   const el = $('#audioNote');
   if (!sack) { el.textContent = 'Sækken bygges …'; el.className = 'note'; return; }
   const st = sack.audio ? sack.audio.state : 'ingen';
   const ok = st === 'running';
+  const n = sack._sampleBufs ? sack._sampleBufs.length : 0;
   el.className = 'note' + (ok ? '' : ' warn');
   el.textContent = ok
-    ? 'Lyd: kører. Mønterne kan høres uden at reklamen er unmutet.'
+    ? 'Lyd: kører — ' + n + ' af 14 møntklip afkodet. Mønterne høres uden at ' +
+      'reklamen er unmutet.'
     : 'Lyd: ' + st + ' — tryk Start, eller klik på siden.';
 }
 
@@ -1241,6 +1297,8 @@ function apply() {
     c.classList.toggle('on', c.dataset.id === state.aspect));
   document.querySelectorAll('#sackChips .chip').forEach(c =>
     c.classList.toggle('on', c.dataset.id === state.sack));
+  document.querySelectorAll('#spendChips .chip').forEach(c =>
+    c.classList.toggle('on', c.dataset.id === state.spendStyle));
 
   paintOrnament();
   readout();
@@ -1325,6 +1383,11 @@ buildChips($('#frameChips'), window.Frames.FRAMES.map(f =>
 buildChips($('#deviceChips'), DEVICES, id => { state.device = id; apply(); });
 buildChips($('#aspectChips'), ASPECTS, id => { state.aspect = id; buildFeed(); apply(); });
 buildChips($('#sackChips'), ANCHORS, setAnchor);
+buildChips($('#spendChips'), SPEND_STYLES, id => {
+  state.spendStyle = id;
+  buildSack();   // varianten læses ved fødslen, ikke løbende
+  apply();
+});
 
 $('#safeToggle').addEventListener('change', e => { state.safe = e.target.checked; apply(); });
 
@@ -1371,6 +1434,16 @@ $('#resetCoins').addEventListener('click', () => {
   $('#coinValue').textContent = '0';
   buildSack();
 });
+
+$('#price').addEventListener('input', e => {
+  state.price = Number(e.target.value);
+  $('#priceNum').textContent = state.price + ' stk';
+});
+
+// To veje til det samme køb: knappen i telefonen er den rigtige — den er der
+// appen har sin — og knappen i panelet er der bare fordi den er nem at ramme.
+$('#buyBtn').addEventListener('click', () => spend(state.price));
+$('#buyAd').addEventListener('click', () => spend(state.price));
 
 $('#copyCss').addEventListener('click', async () => {
   const btn = $('#copyCss');

@@ -26,9 +26,12 @@ fortæller hvad de koster, mens du gør det.
 | Rammen, de syv stilarter, bjælker, vindue | **Ægte** — samme CSS |
 | Guld-ornamentet (13a/13b) | **Ægte** — samme `drawOrnate` |
 | Møntsækken og dens lyd | **Ægte** — samme motor |
+| Købe-animationen og ka-ching'en | **Ægte** — motorens `spendCoins()` |
+| De 14 møntklip | **Ægte** — handoff'ens wav'er |
 | Startskærmen | **Ægte** — samme markup og styling |
 | Reklamerne | **Stand-in.** SVG-firkanter i et valgt format |
 | Telefonen | **Stand-in.** En kasse med en påstået sikker zone |
+| Prisen på et køb | **Stand-in.** En skyder. Appen bestemmer selv |
 
 Reklamerne er stand-ins med vilje: rigtige reklamer kræver netværkene, og de
 skifter under dig hver gang du loader. Men de bruger samme `object-fit` og samme
@@ -37,28 +40,72 @@ slørrede baggrund som appen, så rammen behandler dem ens.
 Appen fjerner også bagte sorte bjælker inde i reklamefilerne (`lib/letterbox.js`).
 Det gør lab'et ikke — dets stand-ins har ingen bjælker at fjerne.
 
-## De to kopier
+## Lyden
 
-`coin-sack-engine.js` og `frames.js` er **kopier**. Originalerne er
-`lib/coin-sack-engine.js` og `lib/frames.js`.
+To lag, og de er uafhængige af reklamens lyd:
 
-Der er én forskel: `export` er væk, og tingene hænger på `window` i stedet.
-Grunden er kedelig — ES-moduler nægter at loade over `file://`, og hele pointen
-er at filen åbner ved dobbeltklik.
+- **Ved hver mønt:** motorens synth-klink, med ét af **fjorten rigtige møntklip**
+  lagt ovenpå ved lav volumen. Kun *hvilket* klip er tilfældigt — der er aldrig
+  stilhed.
+- **Ved et køb:** en pixel-ka-ching. Fire nære afarter, **A–D**; handoff'en peger
+  på A. Panelet kan skifte mellem dem, men sækken bygges om når du gør —
+  motoren læser varianten når den fødes, ikke løbende.
 
-**Ret aldrig en fejl i kopien.** Ret den i `lib/`, og kør så kopien igen:
+Lyd kræver et klik først (browserens regel). Startskærmen er dét klik.
+
+**Klippene ligger som `data:`-URI'er i `coin-samples.js`, ikke som filstier.**
+Grunden er kedelig og vigtig: motoren henter samples med `fetch()`, og `fetch()`
+mod en `file://`-URL er spærret i en almindelig Chrome. Motoren sluger fejlen
+(`.catch(() => {})`), så lydene ville bare ikke være der — uden et ord i
+konsollen. En `data:`-URI kan hentes overalt.
+
+Panelet skriver hvor mange klip der faktisk er afkodet (`14 af 14`), fordi det
+ellers ikke er til at se.
+
+## De tre genererede filer
+
+`coin-sack-engine.js`, `frames.js` og `coin-samples.js` er **genereret**.
+Originalerne er `lib/coin-sack-engine.js`, `lib/frames.js` og
+`public/sack/coin/*.wav`.
+
+De to js-filer er ikke skrevet — de er lavet af originalen med to mekaniske
+ændringer: `export` er væk og tingene hænger på `window`, og hver fil er pakket
+ind i sin egen funktion.
+
+ES-moduler nægter at loade over `file://`, og hele pointen er at filen åbner ved
+dobbeltklik — deraf almindelige `<script>`-tags. Og **indpakningen er ikke pynt**:
+motoren og `frames.js` erklærer begge en `const GOLD`. Som moduler har de hver
+sit rum; som almindelige scripts deler de ét, og så dør den fil der læses sidst
+med *"Identifier 'GOLD' has already been declared"* — hele filen, uden en lyd i
+konsollen. Det skete, og det var ikke til at se.
+
+**Ret aldrig en fejl her.** Ret den i `lib/`, og kør så generatoren igen. Den
+første `sed` i hver beholder advarslen øverst:
 
 ```sh
-{
-sed -n '1,8p' public/lab/coin-sack-engine.js
-sed 's/^export class CoinSack/class CoinSack/' lib/coin-sack-engine.js
-echo 'window.CoinSack = CoinSack;'
-} > /tmp/e.js && mv /tmp/e.js public/lab/coin-sack-engine.js
-```
+# motoren
+{ sed -n '1,15p' public/lab/coin-sack-engine.js
+  echo '(function () {'
+  sed 's/^export class CoinSack/class CoinSack/' lib/coin-sack-engine.js
+  echo 'window.CoinSack = CoinSack;'; echo '})();'
+} > /tmp/e && mv /tmp/e public/lab/coin-sack-engine.js
 
-(Første linje beholder kopi-advarslen øverst. Samme øvelse for `frames.js` med
-`sed -E 's/^export (const|function) /\1 /'` og
-`window.Frames = { FRAMES, DEFAULT_FRAME, isOrnate, drawOrnate };`.)
+# frames
+{ sed -n '1,4p' public/lab/frames.js
+  echo '(function () {'
+  sed -E 's/^export (const|function) /\1 /' lib/frames.js
+  echo 'window.Frames = { FRAMES, DEFAULT_FRAME, isOrnate, drawOrnate };'; echo '})();'
+} > /tmp/f && mv /tmp/f public/lab/frames.js
+
+# møntlydene — kun hvis wav'erne skiftes ud
+{ sed -n '1,10p' public/lab/coin-samples.js
+  echo 'window.COIN_SAMPLES = ['
+  for i in $(seq 1 14); do
+    printf "  'data:audio/wav;base64,%s',\n" "$(base64 -w 0 public/sack/coin/coin-$i.wav)"
+  done
+  echo '];'
+} > /tmp/s && mv /tmp/s public/lab/coin-samples.js
+```
 
 ## CSS'en tilbage i appen
 
