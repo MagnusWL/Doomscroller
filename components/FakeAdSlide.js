@@ -6,6 +6,7 @@ import {
   THEMES, TONES, WORN, WORN_SZ, SPECS, SCENES, TOTAL_DUR, sceneAt,
   STAGE_W, STAGE_H, KLODS_DEFAULTS,
 } from '@/lib/klods';
+import { shouldCover } from '@/lib/fit';
 
 // Loaded in app/layout.js via next/font, which self-hosts them.
 const FSANS = 'var(--font-archivo), system-ui, sans-serif';
@@ -334,14 +335,21 @@ export default function FakeAdSlide({ feedRef, config }) {
   const cfg = { ...KLODS_DEFAULTS, ...config };
   const pal = THEMES[cfg.theme] || THEMES.Light;
 
-  // The piece is authored at a fixed 1080×1920 and stays 9:16 everywhere, like
-  // a Short: fit it to the slide and let the feed fill the sides.
+  // The piece is authored at a fixed 1080×1920. The window it goes in is
+  // portrait too, so filling it costs a sliver off one edge at most — well
+  // inside the design's own margins — and is worth it to have the ad meet the
+  // frame. Anywhere the shapes really diverge, it letterboxes instead.
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
     const fit = () => {
       const r = root.getBoundingClientRect();
-      if (r.width && r.height) setScale(Math.min(r.width / STAGE_W, r.height / STAGE_H));
+      if (!r.width || !r.height) return;
+      setScale(
+        shouldCover(STAGE_W / STAGE_H, r.width / r.height)
+          ? Math.max(r.width / STAGE_W, r.height / STAGE_H)
+          : Math.min(r.width / STAGE_W, r.height / STAGE_H)
+      );
     };
     fit();
     const observer = new ResizeObserver(fit);

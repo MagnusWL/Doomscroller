@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { loadVideoAd } from '@/lib/vast';
+import { shouldCover } from '@/lib/fit';
 
 const px = url => { new Image().src = url; };
 
@@ -33,6 +34,20 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const [noFill, setNoFill] = useState(false);
   const [muted, setMuted] = useState(true);
   const [skipSecondsLeft, setSkipSecondsLeft] = useState(null);
+  // Assume letterbox until the file's real shape is known: growing into the
+  // window is less jarring to watch than being cropped back out of it.
+  const [cover, setCover] = useState(false);
+
+  // The VAST attributes describe the encode, not necessarily the picture, so
+  // the decoded frame is what decides.
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    const root = rootRef.current;
+    if (!video || !root || !video.videoWidth) return;
+    const box = root.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    setCover(shouldCover(video.videoWidth / video.videoHeight, box.width / box.height));
+  };
 
   // Held in a ref so a caller passing an inline arrow doesn't rebuild the
   // observer on every render.
@@ -144,29 +159,32 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
       style={ad.clickThrough ? { cursor: 'pointer' } : undefined}
       onClick={handleRootClick}
     >
-      {/* The same footage, blown up and blurred to fill the window behind the
-          ad. Nearly all inventory is 16:9 in a portrait frame, so without this
-          the ad sits in a black void; cropping it to fill would throw away
-          three quarters of what the advertiser made. */}
-      <video
-        ref={backdropRef}
-        className="vad-backdrop"
-        src={ad.media.url}
-        muted
-        playsInline
-        preload="auto"
-        autoPlay
-        aria-hidden="true"
-        tabIndex={-1}
-      />
+      {/* The same footage, blown up and blurred to fill the window behind a
+          letterboxed ad. A covering ad hides it completely, so it isn't
+          rendered — that's a whole video decode saved. */}
+      {!cover && (
+        <video
+          ref={backdropRef}
+          className="vad-backdrop"
+          src={ad.media.url}
+          muted
+          playsInline
+          preload="auto"
+          autoPlay
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      )}
       <video
         ref={videoRef}
         className="vad-media"
+        style={{ objectFit: cover ? 'cover' : 'contain' }}
         src={ad.media.url}
         muted={muted}
         playsInline
         preload="auto"
         autoPlay
+        onLoadedMetadata={handleLoadedMetadata}
         onPlaying={handlePlaying}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
