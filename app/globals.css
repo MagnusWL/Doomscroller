@@ -28,25 +28,7 @@ html, body {
   position: relative;
 }
 
-/* Ad container: 2 banners stacked vertically per slide */
-.ad {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Adcash renders its banner iframe into this slot. */
-.ac-slot {
-  width: 100%;
-  height: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* Video ad slide: edge-to-edge like the banner slides. */
+/* Video ad slide: fills the slide edge-to-edge. */
 .vad {
   width: 100%;
   height: 100%;
@@ -65,7 +47,7 @@ html, body {
   object-fit: cover;
 }
 
-/* Clears the fixed braincell bar across the top. */
+/* Clears the fixed ad-coin bar across the top. */
 .vad-badge {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 66px);
@@ -80,9 +62,10 @@ html, body {
   z-index: 2;
 }
 
+/* Rides above the fixed action bar rather than under it. */
 .vad-sound {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  bottom: calc(env(safe-area-inset-bottom) + 61px);
   left: 12px;
   width: 40px;
   height: 40px;
@@ -98,7 +81,7 @@ html, body {
 
 .vad-skip {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom) + 12px);
+  bottom: calc(env(safe-area-inset-bottom) + 61px);
   right: 12px;
   height: 40px;
   padding: 0 16px;
@@ -117,9 +100,10 @@ html, body {
   cursor: default;
 }
 
+/* Clears both the action bar and the video controls stacked above it. */
 .hint {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom) + 20px);
+  bottom: calc(env(safe-area-inset-bottom) + 111px);
   left: 50%;
   transform: translateX(-50%);
   font-size: 12px;
@@ -129,7 +113,12 @@ html, body {
 }
 .hint.gone { opacity: 0; }
 
-.brain-stats {
+.vad-empty {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 13px;
+}
+
+.coin-counter {
   position: fixed;
   top: env(safe-area-inset-top);
   left: 0;
@@ -137,7 +126,7 @@ html, body {
   z-index: 10;
   display: flex;
   justify-content: center;
-  gap: 18px;
+  gap: 6px;
   padding: 10px 16px;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
@@ -145,60 +134,51 @@ html, body {
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.brain-stats .label {
+.coin-counter .label {
   opacity: 0.6;
-  margin-right: 4px;
 }
 
-.autoscroll-toggle {
+/* Every action lives here now: buy, inventory, autoscroll. */
+.bottom-actions {
   position: fixed;
-  top: calc(env(safe-area-inset-top) + 8px);
-  right: 12px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 11;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
+  padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
-  font-size: 12px;
+}
+
+/* The bar already carries the dark backing, so the controls on it lift off
+   that rather than stacking another layer of black. */
+.action-btn,
+.autoscroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
   user-select: none;
+}
+.action-btn:disabled {
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
 }
 .autoscroll-toggle input {
   accent-color: #fff;
   cursor: pointer;
-}
-
-/* Buy + Inventory, riding above the braincell bar on the other side from
-   the autoscroll toggle. */
-.top-actions {
-  position: fixed;
-  top: calc(env(safe-area-inset-top) + 8px);
-  left: 12px;
-  z-index: 11;
-  display: flex;
-  gap: 8px;
-}
-
-.top-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
-}
-.top-btn:disabled {
-  color: rgba(255, 255, 255, 0.4);
-  cursor: default;
 }
 
 .inv-count {
@@ -292,58 +272,4 @@ html, body {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-}
-
-.refill-btn {
-  display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 9999;
-  padding: 16px 28px;
-  border: none;
-  border-radius: 999px;
-  background: #fff;
-  color: #000;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-}
-.refill-btn.show { display: block; }
-
-.yt-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  background: rgba(0, 0, 0, 0.85);
-  align-items: center;
-  justify-content: center;
-}
-.yt-modal.show { display: flex; }
-
-.yt-modal-box {
-  position: relative;
-  width: min(92vw, 640px);
-  aspect-ratio: 16 / 9;
-}
-.yt-modal-box iframe {
-  width: 100%;
-  height: 100%;
-  border: none;
-  border-radius: 12px;
-}
-
-.yt-modal-close {
-  position: absolute;
-  top: -44px;
-  right: 0;
-  border: none;
-  background: none;
-  color: #fff;
-  font-size: 28px;
-  line-height: 1;
-  cursor: pointer;
 }

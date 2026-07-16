@@ -1,19 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useBrainrot } from '@/hooks/useBrainrot';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSlideProgress } from '@/hooks/useSlideProgress';
 import { useInfiniteSlides } from '@/hooks/useInfiniteSlides';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useInventory } from '@/hooks/useInventory';
-import { randomLecture } from '@/lib/lectures';
+import { useAdCoins } from '@/hooks/useAdCoins';
 import { runVideoSlider } from '@/lib/adcash';
 import { captureActiveAd } from '@/lib/capture';
-import BrainStatsBar from '@/components/BrainStatsBar';
-import RefillButton from '@/components/RefillButton';
-import LectureModal from '@/components/LectureModal';
+import AdCoinCounter from '@/components/AdCoinCounter';
 import ScrollHint from '@/components/ScrollHint';
-import AdSlide from '@/components/AdSlide';
 import VideoAdSlide from '@/components/VideoAdSlide';
 import AutoScrollToggle from '@/components/AutoScrollToggle';
 import BuyAdButton from '@/components/BuyAdButton';
@@ -23,17 +19,21 @@ import InventoryOverlay from '@/components/InventoryOverlay';
 export default function Feed() {
   const feedRef = useRef(null);
   const [hintVisible, setHintVisible] = useState(true);
-  const [lectureVideoId, setLectureVideoId] = useState(null);
   const [autoScroll, setAutoScroll] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [buying, setBuying] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [filled, setFilled] = useState(() => new Set());
 
-  const brainrot = useBrainrot();
-  const observeSlide = useSlideProgress(feedRef, brainrot.advance);
-  const { slides, sentinelRef, markSlideAsBanner } = useInfiniteSlides(feedRef);
+  const coins = useAdCoins();
+  const observeSlide = useSlideProgress(feedRef, coins.award);
+  const { slides, sentinelRef } = useInfiniteSlides(feedRef);
   useAutoScroll(feedRef, autoScroll);
   const inventory = useInventory();
+
+  const markFilled = useCallback(id => {
+    setFilled(prev => new Set(prev).add(id));
+  }, []);
 
   // Always start at the first ad, even after a reload.
   useEffect(() => {
@@ -62,15 +62,6 @@ export default function Feed() {
     feedRef.current.scrollBy({ top: feedRef.current.clientHeight, behavior: 'smooth' });
   };
 
-  const handleRefillClick = () => {
-    setLectureVideoId(randomLecture());
-  };
-
-  const handleCloseLecture = () => {
-    setLectureVideoId(null);
-    brainrot.refill();
-  };
-
   // Setting the index to the value it already holds is a no-op re-render-wise,
   // so this runs free on the scroll events between slide boundaries.
   const handleFeedScroll = () => {
@@ -89,45 +80,38 @@ export default function Feed() {
     }
   };
 
-  // Banners live in cross-origin iframes with no way to read their pixels, so
-  // there's nothing to hand the inventory.
-  const buyable = slides[activeIndex] && slides[activeIndex].type === 'video';
+  // There's nothing to capture until the ad for this slide has arrived.
+  const buyable = filled.has(slides[activeIndex]);
 
   return (
     <>
       <div id="feed" ref={feedRef} onScroll={handleFeedScroll}>
-        {slides.map(s => (
-          <section key={s.id} className="slide" data-index={s.id} ref={observeSlide}>
-            {s.type === 'video' ? (
-              <VideoAdSlide
-                feedRef={feedRef}
-                onSkip={handleSkip}
-                onNoFill={() => markSlideAsBanner(s.id)}
-              />
-            ) : (
-              <AdSlide id={s.id} />
-            )}
+        {slides.map(id => (
+          <section key={id} className="slide" data-index={id} ref={observeSlide}>
+            <VideoAdSlide
+              feedRef={feedRef}
+              onSkip={handleSkip}
+              onFilled={() => markFilled(id)}
+            />
           </section>
         ))}
         <div ref={sentinelRef} />
       </div>
 
-      <BrainStatsBar braincells={brainrot.braincells} brainrotSpeed={brainrot.brainrotSpeed} />
+      <AdCoinCounter coins={coins.coins} />
+      <ScrollHint visible={hintVisible} />
 
-      <div className="top-actions">
+      <div className="bottom-actions">
         <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
         <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
+        <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
       </div>
 
-      <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
-      <RefillButton visible={brainrot.depleted} onClick={handleRefillClick} />
-      <LectureModal videoId={lectureVideoId} onClose={handleCloseLecture} />
       <InventoryOverlay
         open={inventoryOpen}
         items={inventory.items}
         onClose={() => setInventoryOpen(false)}
       />
-      <ScrollHint visible={hintVisible} />
     </>
   );
 }
