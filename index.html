@@ -108,7 +108,7 @@
   .vad-sound {
     position: absolute;
     bottom: 12px;
-    right: 12px;
+    left: 12px;
     width: 40px;
     height: 40px;
     border: 0;
@@ -119,6 +119,27 @@
     line-height: 1;
     cursor: pointer;
     z-index: 2;
+  }
+
+  .vad-skip {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .vad-skip:disabled {
+    color: rgba(255, 255, 255, 0.45);
+    cursor: default;
   }
 
   /* Inspirational image slide */
@@ -230,10 +251,13 @@
   // impression and stop filling, so every request needs a fresh one.
   const correlator = () => `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
 
-  // Video ad sources, tried in order until one fills. Adcash's In-stream Video
-  // zone drops in as another entry here once it exists; VAST is an IAB standard,
-  // so any network's tag works without touching the player below.
+  // Video ad sources, tried in order until one fills. VAST is an IAB standard,
+  // so a new network is one more entry here and nothing else.
   const VAST_TAGS = [
+    // Adcash In-stream Video zone 11731718.
+    () => 'https://youradexchange.com/video/select.php?r=11731718',
+    // Google's public sample tag, so the feed still shows video when Adcash has
+    // nothing to serve. It earns nothing — drop it before this carries real traffic.
     () => 'https://pubads.g.doubleclick.net/gampad/ads' +
           '?iu=/21775744923/external/single_ad_samples&sz=640x480' +
           '&cust_params=sample_ct%3Dlinear&ciu_szs=300x250&gdfp_req=1' +
@@ -303,7 +327,34 @@
     }
 
     const media = pickMedia(ad);
-    return media && { media, trackers, clickThrough: nodeText(ad.querySelector('ClickThrough')) };
+    if (!media) return null;
+    const linear = ad.querySelector('Linear');
+    return {
+      media,
+      trackers,
+      clickThrough: nodeText(ad.querySelector('ClickThrough')),
+      skipAfter: parseSkipOffset(
+        linear && linear.getAttribute('skipoffset'),
+        hmsToSeconds(nodeText(ad.querySelector('Duration')))
+      ),
+    };
+  }
+
+  const hmsToSeconds = hms => {
+    const parts = String(hms).split(':').map(Number);
+    return parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : NaN;
+  };
+
+  // VAST states skippability as either a timestamp or a percentage of the ad's
+  // own duration. Absent means the viewer must sit through it.
+  function parseSkipOffset(raw, duration) {
+    if (!raw) return null;
+    if (raw.trim().endsWith('%')) {
+      const pct = parseFloat(raw);
+      return isFinite(pct) && isFinite(duration) ? (duration * pct) / 100 : null;
+    }
+    const secs = hmsToSeconds(raw);
+    return isFinite(secs) ? secs : null;
   }
 
   async function loadVideoAd() {
@@ -360,6 +411,27 @@
       fireEvery(video.muted ? 'mute' : 'unmute');
     });
 
+    // Adcash serves minute-long creatives. Without a way out, one ad holds the
+    // feed hostage for as long as the advertiser paid for.
+    const controls = [badge, sound];
+    if (ad.skipAfter != null) {
+      const skip = document.createElement('button');
+      skip.className = 'vad-skip';
+      skip.disabled = true;
+      skip.textContent = `Skip in ${Math.ceil(ad.skipAfter)}`;
+      skip.addEventListener('click', e => {
+        e.stopPropagation();
+        fireEvery('skip');
+        feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
+      });
+      video.addEventListener('timeupdate', () => {
+        const left = Math.ceil(ad.skipAfter - video.currentTime);
+        skip.disabled = left > 0;
+        skip.textContent = left > 0 ? `Skip in ${left}` : 'Skip ›';
+      });
+      controls.push(skip);
+    }
+
     if (ad.clickThrough) {
       box.style.cursor = 'pointer';
       box.addEventListener('click', () => {
@@ -369,7 +441,7 @@
     }
 
     box.textContent = '';
-    box.append(video, badge, sound);
+    box.append(video, ...controls);
     video.play().catch(() => {});
     return video;
   }
