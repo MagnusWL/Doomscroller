@@ -6,7 +6,7 @@ export default function AutoScrollToggle({ enabled, onChange }) {
         checked={enabled}
         onChange={e => onChange(e.target.checked)}
       />
-      Autoscroll
+      <span className="action-label">Autoscroll</span>
     </label>
   );
 }

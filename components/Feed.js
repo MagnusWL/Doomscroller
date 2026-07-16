@@ -105,13 +105,15 @@ export default function Feed() {
         <div ref={sentinelRef} />
       </div>
 
-      <AdCoinCounter coins={coins.coins} />
       <ScrollHint visible={hintVisible} />
 
-      <div className="bottom-actions">
-        <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
-        <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
-        <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
+      <div className="action-rail">
+        <AdCoinCounter coins={coins.coins} />
+        <div className="rail-actions">
+          <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
+          <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
+          <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
+        </div>
       </div>
 
       <InventoryOverlay
