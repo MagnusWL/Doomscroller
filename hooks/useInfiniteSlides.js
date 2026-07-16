@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const INITIAL_COUNT = 8;
 const BATCH_SIZE = 5;
 
-// Alternate video and the banner pair, so neither ad format carries the
-// whole feed on its own.
-const makeSlide = id => ({ id, type: id % 2 === 1 ? 'video' : 'banner' });
+// Two video slides for every banner pair: video is the format worth scrolling,
+// banners keep the mix from resting on one demand source.
+const makeSlide = id => ({ id, type: id % 3 === 0 ? 'banner' : 'video' });
 
 function makeBatch(startId, count) {
   return Array.from({ length: count }, (_, i) => makeSlide(startId + i + 1));
