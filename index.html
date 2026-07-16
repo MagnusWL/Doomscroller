@@ -7,11 +7,6 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9316425515738331"
      crossorigin="anonymous"></script>
 <script id="aclib" type="text/javascript" src="https://acscdn.com/script/aclib.js"></script>
-<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
-<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
-<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
-<script src="https://unpkg.com/videojs-contrib-ads/dist/videojs.ads.js"></script>
-<script src="https://unpkg.com/videojs-ima/dist/videojs.ima.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -43,29 +38,22 @@
     position: relative;
   }
 
-  /* Ad container */
+  /* Ad container: 2 banners stacked vertically per slide */
   .ad {
     width: 100%;
     height: 100%;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
   }
 
   /* Adcash renders its banner iframe into this slot. */
   .ac-slot {
     width: 100%;
-    height: 100%;
+    height: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .video-js,
-  .video-js .vjs-tech {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    overflow: hidden;
   }
 
   .hint {
@@ -93,43 +81,39 @@
   const feed = document.getElementById('feed');
   const hint = document.getElementById('hint');
 
-  const AD_TAG_URL = 'https://youradexchange.com/video/select.php?r=11731598';
+  const AC_ZONE_ID = '11731342';
 
   let count = 0;
 
   function addSlides(n) {
     const frag = document.createDocumentFragment();
-    const newVideoIds = [];
+    const newAdSlots = [];
     for (let i = 0; i < n; i++) {
       count++;
       const slide = document.createElement('section');
       slide.className = 'slide';
       slide.dataset.index = count;
 
-      const videoId = `ac-video-${count}`;
+      const slotIdA = `ac-slot-${count}-a`;
+      const slotIdB = `ac-slot-${count}-b`;
       slide.innerHTML = `
         <div class="ad">
-          <video id="${videoId}" class="video-js" playsinline muted></video>
+          <div class="ac-slot" id="${slotIdA}"></div>
+          <div class="ac-slot" id="${slotIdB}"></div>
         </div>`;
-      newVideoIds.push(videoId);
+      newAdSlots.push(slotIdA, slotIdB);
 
       frag.appendChild(slide);
     }
     feed.appendChild(frag);
     observeTail();
 
-    // Must run after the slides are in the DOM, since videojs looks up
-    // the <video> element by id. Muted so autoplay isn't blocked by
-    // browser policy. Guarded so a blocked CDN script only skips the
-    // video ads instead of throwing and killing the whole feed.
-    if (typeof videojs !== 'undefined') {
-      for (const id of newVideoIds) {
-        const player = videojs(id);
-        if (typeof player.ima === 'function') {
-          player.ima({ adTagUrl: AD_TAG_URL });
-        }
-        player.muted(true);
-        player.play().catch(() => {});
+    // Fill each new slot. Must run after the slides are in the DOM, since
+    // Adcash looks up renderIn by selector. Inline <script> tags don't
+    // execute when inserted via innerHTML, hence the programmatic call.
+    if (typeof aclib !== 'undefined') {
+      for (const id of newAdSlots) {
+        aclib.runBanner({ zoneId: AC_ZONE_ID, renderIn: `#${id}` });
       }
     }
   }
