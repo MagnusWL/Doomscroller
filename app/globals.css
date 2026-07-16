@@ -28,6 +28,29 @@ html, body {
   position: relative;
 }
 
+/* Fake ad slide. The piece is authored at a fixed 1080x1920 and scaled to fit
+   by FakeAdSlide, so it stays 9:16 on any screen — centred like a Short, with
+   the slide filling the sides. */
+.fake-ad {
+  width: 100%;
+  height: 100%;
+  /* Flex and grid items refuse to shrink below their content, and this one's
+     content is a fixed 1080px wide. Without this the slide gets pushed out. */
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Out of flow on purpose: centring it by layout would centre it inside a track
+   auto-sized to the stage's own 1080x1920, which overflows the slide rather
+   than fitting in it. Absolute keeps the stage from having any say in layout. */
+.fake-ad-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center;
+}
+
 /* Video ad slide: fills the slide edge-to-edge. */
 .vad {
   width: 100%;

@@ -6,11 +6,13 @@ import { useInfiniteSlides } from '@/hooks/useInfiniteSlides';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { useInventory } from '@/hooks/useInventory';
 import { useAdCoins } from '@/hooks/useAdCoins';
+import { useFakeAds } from '@/hooks/useFakeAds';
 import { runVideoSlider } from '@/lib/adcash';
 import { captureActiveAd } from '@/lib/capture';
 import AdCoinCounter from '@/components/AdCoinCounter';
 import ScrollHint from '@/components/ScrollHint';
 import VideoAdSlide from '@/components/VideoAdSlide';
+import FakeAdSlide from '@/components/FakeAdSlide';
 import AutoScrollToggle from '@/components/AutoScrollToggle';
 import BuyAdButton from '@/components/BuyAdButton';
 import InventoryButton from '@/components/InventoryButton';
@@ -30,6 +32,7 @@ export default function Feed() {
   const { slides, sentinelRef } = useInfiniteSlides(feedRef);
   useAutoScroll(feedRef, autoScroll);
   const inventory = useInventory();
+  const isFake = useFakeAds();
 
   const markFilled = useCallback(id => {
     setFilled(prev => new Set(prev).add(id));
@@ -88,11 +91,15 @@ export default function Feed() {
       <div id="feed" ref={feedRef} onScroll={handleFeedScroll}>
         {slides.map(id => (
           <section key={id} className="slide" data-index={id} ref={observeSlide}>
-            <VideoAdSlide
-              feedRef={feedRef}
-              onSkip={handleSkip}
-              onFilled={() => markFilled(id)}
-            />
+            {isFake(id) ? (
+              <FakeAdSlide feedRef={feedRef} />
+            ) : (
+              <VideoAdSlide
+                feedRef={feedRef}
+                onSkip={handleSkip}
+                onFilled={() => markFilled(id)}
+              />
+            )}
           </section>
         ))}
         <div ref={sentinelRef} />
