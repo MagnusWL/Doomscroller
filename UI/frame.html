@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Doomscroller — UI-ramme (mobil)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* ── Rammen. Det er reelt kun disse tre tal. ─────────────────────────────
+     --bar-h    højden på bjælken foroven og forneden
+     --frame-x  den sorte margin i hver side
+     --frame-y  det sorte mellem bjælken og reklamen
+
+     ADVARSEL: frame-x og frame-y hører sammen. De bestemmer ikke bare hvor
+     stort vinduet er, men hvilken FACON det har — og faconen bærer noget.
+     Ved disse værdier bliver vinduet 326x579 på en iPhone 14, altså forholdet
+     0,563. En lodret reklame er 9:16 = 0,5625. Fordi de to er så tæt på
+     hinanden, kan en lodret reklame fylde rammen helt ud og kun miste 0,1%.
+     Ændrer man kun den ene, skrider forholdet, og lodrette reklamer begynder
+     at blive beskåret for at passe. Flyt dem sammen.                        */
+  :root {
+    --bar-h: 52px;
+    --frame-x: 32px;
+    --frame-y: 40px;
+
+    --bar-bg: rgba(0, 0, 0, 0.55);
+    --chip-bg: rgba(255, 255, 255, 0.12);
+    --overlay-bg: rgba(0, 0, 0, 0.6);
+    --window-radius: 16px;
+  }
+
+  html, body {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  /* Én reklame per skærm, snappet som TikTok. */
+  #feed {
+    height: 100dvh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+  #feed::-webkit-scrollbar { display: none; }
+
+  /* Reklamen er et vindue inde i rammen. Padding'en reserverer rammen;
+     vinduet fylder resten. */
+  .slide {
+    height: 100dvh;
+    width: 100%;
+    padding:
+      calc(env(safe-area-inset-top) + var(--bar-h) + var(--frame-y))
+      var(--frame-x)
+      calc(env(safe-area-inset-bottom) + var(--bar-h) + var(--frame-y));
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Vinduet. I den rigtige app ligger videoen her. */
+  .window {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--window-radius);
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Står i stedet for reklamen, så vinduets kanter er til at se. */
+  .placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  .placeholder span { position: relative; z-index: 1; }
+
+  /* ── Mærkater og knapper på selve vinduet ────────────────────────────── */
+  .badge {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--overlay-bg);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .sound {
+    position: absolute;
+    z-index: 2;
+    bottom: 12px;
+    left: 12px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--overlay-bg);
+    color: #fff;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .skip {
+    position: absolute;
+    z-index: 2;
+    bottom: 12px;
+    right: 12px;
+    height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--overlay-bg);
+    color: #fff;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+
+  /* ── Bjælkerne ───────────────────────────────────────────────────────── */
+  .action-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(env(safe-area-inset-top) + var(--bar-h));
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: env(safe-area-inset-top) 10px 0;
+    background: var(--bar-bg);
+    backdrop-filter: blur(8px);
+  }
+
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(env(safe-area-inset-bottom) + var(--bar-h));
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px env(safe-area-inset-bottom);
+    background: var(--bar-bg);
+    backdrop-filter: blur(8px);
+  }
+
+  .bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .coin-counter {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .coin-counter .coin-value { font-size: 13px; }
+  .coin-counter .label { font-size: 10px; opacity: 0.6; }
+
+  .action-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--chip-bg);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  .action-icon { font-size: 13px; line-height: 1; }
+  .action-btn:disabled { color: rgba(255, 255, 255, 0.4); cursor: default; }
+
+  .bottom-bar .action-btn { padding: 8px 22px; font-size: 13px; }
+  .bottom-bar .action-icon { font-size: 15px; }
+
+  .inv-count {
+    min-width: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: #fff;
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+  }
+
+  .hint {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom) + var(--bar-h) + 68px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+  }
+
+  /* ── Kun til denne fil: en aflæsning af vinduets mål, så man kan se hvad
+        en ændring i rammen koster. Findes ikke i den rigtige app. ───────── */
+  .readout {
+    position: fixed;
+    z-index: 20;
+    left: 50%;
+    top: calc(env(safe-area-inset-top) + var(--bar-h) + 8px);
+    transform: translateX(-50%);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.7);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="feed">
+  <section class="slide">
+    <div class="window">
+      <!-- Et lodret motiv, som en reklame der fylder rammen ud -->
+      <div class="placeholder" style="background:
+           radial-gradient(circle at 30% 28%, #FFD166 0 8%, transparent 9%),
+           radial-gradient(circle at 72% 62%, #06D6A0 0 10%, transparent 11%),
+           linear-gradient(150deg, #1B3A6B, #6C3A8C 55%, #C1436D)">
+        <span>LODRET · FYLDER UD</span>
+      </div>
+      <div class="badge">Ad</div>
+      <button class="sound">🔇</button>
+      <button class="skip">Skip ›</button>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="window">
+      <!-- En 16:9-reklame: skarp stribe i midten, sløret kopi bagved -->
+      <div class="placeholder" style="background:
+           linear-gradient(110deg, #1B3A6B, #C1436D 60%, #F4845F);
+           filter: blur(30px) saturate(1.35) brightness(0.55); transform: scale(1.18)"></div>
+      <div style="position:absolute; z-index:1; left:0; right:0; height:56.25vw; max-height:100%;
+                  top:50%; transform:translateY(-50%); display:grid; place-items:center;
+                  background: linear-gradient(110deg, #1B3A6B, #C1436D 60%, #F4845F);
+                  font-size:11px; letter-spacing:0.1em; color:rgba(255,255,255,0.75)">
+        16:9 · SKALERET NED
+      </div>
+      <div class="badge">Ad</div>
+      <button class="sound">🔇</button>
+      <button class="skip">Skip in 8</button>
+    </div>
+  </section>
+</div>
+
+<div class="action-bar">
+  <div class="coin-counter">
+    <span class="coin-value">🪙 1.240</span>
+    <span class="label">Ad coins</span>
+  </div>
+  <div class="bar-actions">
+    <button class="action-btn">
+      <span class="action-icon">🎒</span>Inventory<span class="inv-count">3</span>
+    </button>
+    <button class="action-btn">
+      <input type="checkbox" style="accent-color:#fff; margin:0">Autoscroll
+    </button>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <button class="action-btn"><span class="action-icon">🛒</span>Buy ad</button>
+</div>
+
+<div class="hint">Swipe or press ↓ for the next ad</div>
+<div class="readout" id="readout"></div>
+
+<script>
+  // Shows what the frame leaves for the ad, and whether the window still
+  // matches 9:16 — the one property that lets a portrait ad fill it uncropped.
+  const readout = document.getElementById('readout');
+  const win = document.querySelector('.window');
+  const update = () => {
+    const r = win.getBoundingClientRect();
+    const a = r.width / r.height;
+    const crop = (1 - Math.min(a, 0.5625) / Math.max(a, 0.5625)) * 100;
+    readout.textContent =
+      `vindue ${Math.round(r.width)}×${Math.round(r.height)} · forhold ${a.toFixed(3)} · lodret beskæres ${crop.toFixed(1)}%`;
+  };
+  new ResizeObserver(update).observe(win);
+  update();
+</script>
+
+</body>
+</html>
