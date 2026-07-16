@@ -172,6 +172,128 @@ html, body {
   cursor: pointer;
 }
 
+/* Buy + Inventory, riding above the braincell bar on the other side from
+   the autoscroll toggle. */
+.top-actions {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  left: 12px;
+  z-index: 11;
+  display: flex;
+  gap: 8px;
+}
+
+.top-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.top-btn:disabled {
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+}
+
+.inv-count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.inv-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: rgba(0, 0, 0, 0.94);
+  display: flex;
+  flex-direction: column;
+}
+
+.inv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.inv-close {
+  border: none;
+  background: none;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.inv-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.inv-item {
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #111;
+  cursor: pointer;
+}
+.inv-item img,
+.inv-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.inv-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.inv-full {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.inv-full img,
+.inv-full video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .refill-btn {
   display: none;
   position: fixed;
