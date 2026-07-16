@@ -7,6 +7,11 @@ import { pictureBounds, placePicture } from '@/lib/letterbox';
 
 const BACKDROP_ZOOM = 1.18; // past the edges: a blur this wide leaves them soft
 
+// One screen's warning. Enough for the VAST call, the download and the pixel
+// probe to finish before the slide is reached; short enough that a reader who
+// stops scrolling hasn't pulled down much they'll never look at.
+const PREFETCH_AHEAD = '100%';
+
 const px = url => { new Image().src = url; };
 
 // Requesting every ad up front would spend advertiser budget on impressions
@@ -99,35 +104,49 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   const onFilledRef = useRef(onFilled);
   onFilledRef.current = onFilled;
 
+  // Fetching only once the slide was on screen meant the reader watched the ad
+  // arrive: the VAST call, the download and the measurement all happened with
+  // them staring at black. A screen's warning is enough for all of it to be
+  // over before they get here.
   useEffect(() => {
     const feed = feedRef.current;
     const root = rootRef.current;
-    if (!feed || !root) return;
+    if (!feed || !root || requested) return;
 
     const observer = new IntersectionObserver(entries => {
-      const entry = entries[0];
-      if (entry.isIntersecting) {
-        if (!requested) {
-          setRequested(true);
-          loadVideoAd().then(result => {
-            if (result) {
-              setAd(result);
-              onFilledRef.current();
-            } else {
-              setNoFill(true);
-            }
-          });
+      if (!entries[0].isIntersecting) return;
+      observer.disconnect();
+      setRequested(true);
+      loadVideoAd().then(result => {
+        if (result) {
+          setAd(result);
+          onFilledRef.current();
         } else {
-          playAll();
+          setNoFill(true);
         }
-      } else {
-        pauseAll();
-      }
-    }, { root: feed, threshold: 0.6 });
+      });
+    }, { root: feed, rootMargin: `${PREFETCH_AHEAD} 0px` });
 
     observer.observe(root);
     return () => observer.disconnect();
   }, [feedRef, requested]);
+
+  // Playback follows what's actually on screen, never the browser's autoplay:
+  // an ad fetched a screen early would otherwise start on its own and bill the
+  // advertiser for an impression nobody could have seen.
+  useEffect(() => {
+    const feed = feedRef.current;
+    const root = rootRef.current;
+    if (!feed || !root || !ad) return;
+
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) playAll();
+      else pauseAll();
+    }, { root: feed, threshold: 0.6 });
+
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [feedRef, ad]);
 
   // Matches the disabled "Skip in N" countdown the original imperative
   // player showed before the first timeupdate tick.
@@ -216,7 +235,6 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
           muted
           playsInline
           preload="auto"
-          autoPlay
           aria-hidden="true"
           tabIndex={-1}
         />
@@ -229,7 +247,6 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
         muted={muted}
         playsInline
         preload="auto"
-        autoPlay
         onLoadedMetadata={handleLoadedMetadata}
         onPlaying={handlePlaying}
         onTimeUpdate={handleTimeUpdate}
