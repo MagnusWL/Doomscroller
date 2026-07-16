@@ -1,42 +1,53 @@
 # Hvor vi slap — 17. juli
 
-## Det åbne spørgsmål
+## Det åbne spørgsmål: Vercel bygger ikke
 
-**Nicolai ser ikke startskærmen på preview'et.** Han ser coinbag'en, men ikke
-gaten — og dermed opfører lyden sig som før.
+**Der blev aldrig oprettet en deployment** for nogen af de to commits:
 
-Det peger på at Vercel er blevet stående på en ældre version:
-
-| commit | hvad | build |
+| commit | hvad | deployment |
 |---|---|---|
-| `3ec94ef` | lydkontekst bygges i en gesture | **bekræftet grøn** |
-| `c780000` | startskærmen | **aldrig bekræftet** |
-| `49eef2b` | ramme-vælgeren | **aldrig bekræftet** |
+| `3ec94ef` | lydkontekst bygges i en gesture | grøn |
+| `c780000` | startskærmen | **findes ikke** |
+| `49eef2b` | ramme-vælgeren | **findes ikke** |
 
-Sækken kom i `909f281`, startskærmen i `c780000`. At han ser den ene og ikke den
-anden, passer på at Vercel serverer `3ec94ef` — altså at `c780000` fejlede.
+Det er ikke et build der fejlede — et fejlet build ville stå der som rødt. Der
+står ingenting.
 
-Koden er gennemsøgt for det der plejer at vælte et build: ingen døde referencer
-til den `setMuted` der blev fjernet fra VideoAdSlide, og hver eneste import
-peger på en eksport der findes. Fejlen kan altså ikke ses ved at læse.
+Og det er ikke pushet: `git log origin/feature/nia-dev` viser begge commits
+liggende på GitHub, identisk med lokalt. **Fejlen sidder mellem GitHub og
+Vercel.** Koden kan man holde op med at lede i.
 
-**Næste skridt, i den rækkefølge:**
+Mistanken er nu integrationen selv: Vercel-appen koblet af repoet, projektet sat
+på pause, eller en grænse ramt på kontoen. Alt sammen ting der kun kan ses i
+**Vercel-dashboardet** — Nicolai har adgang, det har Claude ikke. Kig efter om
+`feature/nia-dev` overhovedet dukker op på deployments-listen efter et push.
 
-1. Kig i Vercel-dashboardet på deployments for `feature/nia-dev`. Er de øverste
-   røde? Byggeloggen har svaret.
-2. Ellers: `curl api.github.com/repos/MagnusWL/Doomscroller/deployments?sha=<sha>`
-   → tag `id` → `/deployments/<id>/statuses`. Kvoten var opbrugt; den nulstilles
-   en time efter den løb tør.
+## Det der ikke længere er ukendt
 
-Ret ikke noget før vi ved hvad der er galt. At ændre kode mens man ikke kan se
-om det virker, laver to fejl i stedet for én.
+Startskærmen, ramme-vælgeren og guld-ornamentet er nu **set virke** — i
+`public/lab/`, uden om Vercel:
 
-## Hvad der ligger klar, men aldrig er set af et menneske
+- **Lyden.** Klikket på Start bygger lydkonteksten inde i en gesture, og
+  `AudioContext.state` bliver `running`, uden at nogen rører en reklame. Det er
+  præcis kuren fra `c780000`, og det er første gang den er set gøre sit arbejde.
+- **Ornamentet.** 13a tegner: guldkant, hjørne-bosser med ædelsten, nagler,
+  krone. 24.636 pixels blæk på et 390×844 lærred.
+- **Sækken.** Ti mønter falder i, og blækket går fra 27.563 til 31.987 pixels.
+- **Geometrien.** Vinduet lander på 326×579 = 0.563 på en iPhone 12. CSS-
+  kommentarens påstand om 9:16 holder.
 
-- **Ramme-vælgeren** — alle syv stilarter i startskærmen. Værdier og geometri er
-  verificeret mod handoff'ens README, men ornamentet (13a/13b) er aldrig set
-  tegnet. Kig især på 13a: krone, nagler og ædelsten, og den mest ambitiøse.
-- **Startskærmen** — tekst og udseende er et gæt. Det er det første brugerne ser.
+Så de to ubekræftede commits er højst sandsynligt sunde. De er bare aldrig nået
+ud.
+
+## Lab'et
+
+`public/lab/index.html` — rammen, startskærmen og møntsækken uden resten af
+appen. **Åbnes ved dobbeltklik.** Intet build, ingen server, ingen Vercel. Den
+ligger i `public/`, så den følger også med en deployment og kan ses på
+`…/lab/index.html` — vejen til at se den på en rigtig telefon.
+
+Se `public/lab/README.md`. Det vigtigste derfra: `coin-sack-engine.js` og
+`frames.js` er **kopier** af filerne i `lib/`. Ret aldrig en fejl i kopien.
 
 ## Åbne beslutninger, ikke fejl
 
@@ -51,6 +62,6 @@ om det virker, laver to fejl i stedet for én.
 
 ## Uroligt vand
 
-Nicolais branch er **18 commits foran `main`**, og noget af det ændrer appen
-markant — video-slideren er slået fra, og reklamerne starter nu med lyd. Magnus
-har ikke set noget af det. `main` står urørt på `b3fcb53`.
+Nicolais branch er **over tyve commits foran `main`**, og noget af det ændrer
+appen markant — video-slideren er slået fra, og reklamerne starter nu med lyd.
+Magnus har ikke set noget af det. `main` står urørt på `b3fcb53`.

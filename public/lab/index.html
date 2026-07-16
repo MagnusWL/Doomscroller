@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doomscroller — UI-lab</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   1. VÆRKSTEDET — bordet rundt om telefonen. Kommer aldrig i appen.
+   ═══════════════════════════════════════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: #16181b;
+  color: #e9eaec;
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.lab { display: flex; align-items: flex-start; gap: 26px; padding: 24px; }
+
+.stage {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.phone {
+  position: relative;
+  flex: none;
+  border: 10px solid #2b2f34;
+  border-radius: 46px;
+  background: var(--screen-bg);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+/* Alt i appen er fixed til browservinduet. Her er telefonen vinduet, så
+   .screen er det alting hænger på. */
+.screen {
+  position: relative;
+  overflow: hidden;
+  background: var(--screen-bg);
+}
+
+.notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 156px;
+  height: 30px;
+  background: #000;
+  border-radius: 0 0 18px 18px;
+  z-index: 10050;
+  pointer-events: none;
+}
+
+.stage-note { font-size: 11px; color: #6f767f; }
+
+/* ── Panelet ──────────────────────────────────────────────────────────────── */
+.panel {
+  flex: 1;
+  min-width: 260px;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card {
+  background: #1e2126;
+  border: 1px solid #2c3138;
+  border-radius: 12px;
+  padding: 13px 14px;
+}
+
+.card h2 {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7d858f;
+  margin-bottom: 9px;
+}
+
+.row { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.row:last-child { margin-bottom: 0; }
+.row label { flex: none; width: 92px; font-size: 11px; color: #a8b0b9; }
+.row input[type=range] { flex: 1; min-width: 0; accent-color: #f5be3c; }
+.row .num {
+  flex: none;
+  width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: #f5be3c;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.chip {
+  padding: 5px 9px;
+  border: 1px solid #363c44;
+  border-radius: 999px;
+  background: none;
+  color: #aeb6bf;
+  font-size: 11px;
+  cursor: pointer;
+}
+.chip:hover { border-color: #4a525c; }
+.chip.on { border-color: #f5be3c; background: rgba(245, 190, 60, 0.14); color: #fff; }
+
+.readout { display: flex; flex-direction: column; gap: 5px; }
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+}
+.fact b {
+  flex: none;
+  width: 58px;
+  font-weight: 400;
+  color: #7d858f;
+}
+.fact span { font-variant-numeric: tabular-nums; color: #dfe3e8; }
+.fact .ok { color: #63c98b; }
+.fact .bad { color: #f0824c; }
+.fact em { font-style: normal; color: #7d858f; }
+
+.note {
+  margin-top: 8px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: #7d858f;
+}
+.note.warn { color: #f0824c; }
+
+.btn {
+  padding: 7px 13px;
+  border: 1px solid #3d444d;
+  border-radius: 7px;
+  background: #262b31;
+  color: #e9eaec;
+  font-size: 11px;
+  cursor: pointer;
+}
+.btn:hover { background: #2e343b; }
+.btn.gold { border-color: #f5be3c; background: rgba(245, 190, 60, 0.16); color: #f5be3c; }
+
+.btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a8b0b9; cursor: pointer; }
+.check input { accent-color: #f5be3c; cursor: pointer; }
+
+pre {
+  margin-top: 8px;
+  padding: 9px;
+  background: #14161a;
+  border: 1px solid #2c3138;
+  border-radius: 7px;
+  font: 10.5px/1.6 ui-monospace, "SF Mono", Consolas, monospace;
+  color: #9aa3ad;
+  white-space: pre;
+  overflow-x: auto;
+}
+pre .k { color: #f5be3c; }
+
+@media (max-width: 800px) {
+  .lab { flex-direction: column; align-items: center; }
+  .stage { position: static; }
+  .panel { max-width: 420px; width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2. APPEN — ordret fra app/globals.css.
+
+   Tre mekaniske erstatninger, og ikke andet:
+
+       position: fixed              →  position: absolute
+       env(safe-area-inset-top)     →  var(--safe-top)
+       env(safe-area-inset-bottom)  →  var(--safe-bottom)
+       100dvh                       →  100%
+
+   De findes kun fordi telefonen her er en kasse på en side og ikke et
+   browservindue. Skru på noget herunder, tryk "Kopiér CSS", og sæt det ind i
+   globals.css — geometrien er den samme.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.phone {
+  --bar-h: 52px;
+  /* Sized together, not to taste: they set the window's shape as well as its
+     size, and at these values it lands on 0.563 — which is 9:16 to within a
+     tenth of a percent, so portrait ads meet the frame without being cropped
+     to do it. Change one and the other has to follow. */
+  --frame-x: 32px;
+  --frame-y: 40px;
+
+  --sack-w: 62px;
+  --sack-h: 90px;
+  --sack-left: var(--frame-x);
+
+  /* Derived, so the sack keeps standing ON the ad rather than in it however it
+     is resized: its foot lands exactly on the window's top edge, and the rest
+     hangs up over the bar. There's a ceiling — a sack taller than
+     --bar-h + --frame-y reaches into the notch. */
+  --sack-top: calc(var(--frame-y) - var(--sack-h));
+
+  /* Hvad de syv rammer er uenige om. */
+  --screen-bg: #000;
+  --bar-bg: rgba(0, 0, 0, 0.55);
+  --bar-blur: blur(8px);
+  --bar-line: transparent;
+  --window-bg: #000;
+  --window-radius: 16px;
+  --seam: none;
+  --seam-h: 0px;
+  --pix: transparent;
+  --pix-size: 0px;
+  --pix-inset: 0px;
+  --window-edge: none;
+}
+
+.screen {
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* The scroller: one full screen per ad, snapped like TikTok */
+#feed {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+#feed::-webkit-scrollbar { display: none; }
+
+/* The ad is a window inside a frame: bars top and bottom, a margin down each
+   side. The padding reserves the frame; the ad fills whatever is left. */
+.slide {
+  height: 100%;
+  width: 100%;
+  padding:
+    calc(var(--safe-top) + var(--bar-h) + var(--frame-y))
+    var(--frame-x)
+    calc(var(--safe-bottom) + var(--bar-h) + var(--frame-y));
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Video ad slide: the window inside the frame. */
+.vad {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--window-radius);
+  background: var(--window-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vad-media,
+.vad-backdrop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: contain;
+}
+
+.vad-media { z-index: 1; }
+
+/* Fills the window behind the ad with the ad's own colours, so a creative that
+   can't fill the frame reads as framed rather than lost in black. */
+.vad-backdrop {
+  object-fit: cover;
+  filter: blur(30px) saturate(1.35) brightness(0.55);
+  pointer-events: none;
+}
+
+/* Right, because the sack hangs over the window's left corner. */
+.vad-badge {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.vad-sound {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vad-skip {
+  position: absolute;
+  z-index: 2;
+  bottom: 12px;
+  right: 12px;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+/* Every piece of chrome lives here: coins, buy, inventory, autoscroll. */
+.action-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--safe-top) + var(--bar-h));
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: var(--safe-top) 10px 0;
+  background: var(--bar-bg);
+  backdrop-filter: var(--bar-blur);
+  border-bottom: 1px solid var(--bar-line);
+}
+
+/* Closes the frame, and puts the one action worth reaching for where the thumb
+   already is. */
+.bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--safe-bottom) + var(--bar-h));
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px var(--safe-bottom);
+  background: var(--bar-bg);
+  backdrop-filter: var(--bar-blur);
+  border-top: 1px solid var(--bar-line);
+}
+
+.bar-actions { display: flex; align-items: center; gap: 6px; }
+.bottom-bar .action-btn { padding: 8px 22px; font-size: 13px; }
+.bottom-bar .action-icon { font-size: 15px; }
+
+/* Left edge flush with the ad window's, per the handoff; foot resting on its
+   top edge, so it stands on the ad rather than in it. */
+.coin-sack {
+  position: absolute;
+  z-index: 12;
+  top: calc(var(--safe-top) + var(--bar-h) + var(--sack-top));
+  left: var(--sack-left);
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.coin-sack canvas {
+  width: var(--sack-w);
+  height: var(--sack-h);
+  display: block;
+}
+
+/* Gold, and staying gold — the client picked it. */
+.coin-sack .coin-value {
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: #f5be3c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* The bar already carries the dark backing, so the controls on it lift off
+   that rather than stacking another layer of black. */
+.action-btn,
+.autoscroll-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.action-icon { font-size: 13px; line-height: 1; }
+.autoscroll-toggle input { accent-color: #fff; cursor: pointer; margin: 0; }
+
+.inv-count {
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* ── The seven frames ────────────────────────────────────────────────────── */
+
+[data-frame='11c'], [data-frame='12a'] {
+  --screen-bg: #060708;
+  --bar-bg: rgba(255, 255, 255, 0.05);
+  --bar-blur: blur(10px);
+  --window-bg: linear-gradient(160deg, #0c0e11, #070809);
+  --window-radius: 18px;
+}
+[data-frame='11c'] { --bar-line: rgba(255, 255, 255, 0.09); }
+
+[data-frame='11f'], [data-frame='12b'] {
+  --screen-bg: #0b0908;
+  --bar-bg: #100c0a;
+  --bar-blur: none;
+  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
+}
+[data-frame='11f'] {
+  --bar-line: rgba(245, 190, 60, 0.22);
+  --window-radius: 18px;
+}
+
+[data-frame='12a'] {
+  --seam: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 4px, transparent 4px 9px);
+  --seam-h: 4px;
+  --pix: rgba(255, 255, 255, 0.4);
+  --pix-size: 5px;
+  --pix-inset: 7px;
+}
+
+[data-frame='12b'] {
+  --window-radius: 16px;
+  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.4) 0 4px, transparent 4px 11px);
+  --seam-h: 4px;
+}
+
+[data-frame='12c'] {
+  --screen-bg: #090807;
+  --bar-bg: rgba(255, 232, 196, 0.05);
+  --bar-blur: blur(10px);
+  --window-bg: linear-gradient(160deg, #100c09, #0a0705);
+  --window-radius: 18px;
+  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.5) 0 5px, rgba(245, 190, 60, 0.14) 5px 10px);
+  --seam-h: 5px;
+  --pix: rgba(245, 190, 60, 0.55);
+  --pix-size: 6px;
+  --pix-inset: 8px;
+}
+
+[data-frame='13a'], [data-frame='13b'] {
+  --screen-bg: #0b0908;
+  --bar-bg: #0e0b08;
+  --bar-blur: none;
+  --bar-line: rgba(245, 190, 60, 0.14);
+  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
+  --window-radius: 6px;
+}
+
+/* Chunky pixel seams along the bars' inner edges. */
+.action-bar::after,
+.bottom-bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--seam-h);
+  background: var(--seam);
+  pointer-events: none;
+}
+.action-bar::after { bottom: calc(0px - var(--seam-h)); }
+.bottom-bar::before { top: calc(0px - var(--seam-h)); }
+
+/* Four pixels just inside the window's corners, as one element with four
+   backgrounds — cheaper than four divs in every slide. */
+.vad::after {
+  content: '';
+  position: absolute;
+  inset: var(--pix-inset);
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0),
+    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0);
+  background-size: var(--pix-size) var(--pix-size);
+  background-position: 0 0, 100% 0, 0 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* 12b's pixel-stitched gold border, hugging all four window edges. */
+[data-frame='12b'] .vad::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
+    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px);
+  background-size: 100% 4px, 100% 4px, 4px 100%, 4px 100%;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  background-repeat: no-repeat;
+}
+
+/* The gold frames are painted, not styled: above the window, below the bars
+   and the sack. */
+.frame-ornament {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Above everything: nothing behind it should be reachable before the click
+   that lets the page make a sound. */
+.start-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 10100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.start-gate-inner { text-align: center; max-width: 300px; }
+
+.start-gate-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.start-gate-copy {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Picking a frame repaints the gate's own bars behind it, so the choice is
+   half-visible before Start is even pressed. */
+.frame-picker {
+  margin-top: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.frame-group-name {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 6px;
+}
+
+.frame-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.frame-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.frame-chip.is-on {
+  border-color: #f5be3c;
+  background: rgba(245, 190, 60, 0.14);
+  color: #fff;
+}
+
+.frame-chip-id { font-family: ui-monospace, monospace; font-size: 9px; opacity: 0.5; }
+.frame-chip.is-on .frame-chip-id { opacity: 0.8; }
+
+.start-btn {
+  margin-top: 22px;
+  padding: 13px 40px;
+  border: 0;
+  border-radius: 999px;
+  background: #f5be3c;
+  color: #1a1206;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.start-gate-fine {
+  margin-top: 14px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+</style>
+</head>
+<body>
+
+<div class="lab">
+  <div class="stage">
+    <div class="phone" id="phone">
+      <div class="screen" id="screen">
+
+        <div id="feed"></div>
+
+        <div class="action-bar">
+          <div class="bar-actions">
+            <button class="action-btn"><span class="action-icon">🗃️</span>Lager<span class="inv-count">0</span></button>
+            <label class="autoscroll-toggle"><input type="checkbox"> Auto</label>
+          </div>
+        </div>
+
+        <div class="coin-sack">
+          <canvas id="sack" aria-hidden="true"></canvas>
+          <span class="coin-value" id="coinValue">0</span>
+        </div>
+
+        <div class="bottom-bar">
+          <button class="action-btn"><span class="action-icon">🛒</span>Køb reklamen</button>
+        </div>
+
+        <canvas class="frame-ornament" id="ornament" aria-hidden="true"></canvas>
+
+        <div class="notch" id="notch"></div>
+
+        <div class="start-gate" id="gate">
+          <div class="start-gate-inner">
+            <div class="start-gate-title">Doomscroller</div>
+            <p class="start-gate-copy">Ads, with the sound on. Scroll to fill the sack.</p>
+            <div class="frame-picker" id="gatePicker"></div>
+            <button class="start-btn" id="startBtn">Start</button>
+            <p class="start-gate-fine">You can mute at any time.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="stage-note" id="stageNote"></div>
+  </div>
+
+  <aside class="panel">
+
+    <div class="card">
+      <h2>Ramme</h2>
+      <div class="chips" id="frameChips"></div>
+    </div>
+
+    <div class="card">
+      <h2>Mål</h2>
+      <div id="sliders"></div>
+      <div class="note" id="pairNote">
+        <b>--frame-x</b> og <b>--frame-y</b> hænger sammen: de sætter vinduets
+        form, ikke bare dets størrelse. Flytter du den ene alene, skrider
+        forholdet væk fra 9:16.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Hvad det giver</h2>
+      <div class="readout">
+        <div class="fact"><b>Vindue</b><span id="rWin">—</span></div>
+        <div class="fact"><b>Forhold</b><span id="rRatio">—</span></div>
+        <div class="fact"><b>Sæk</b><span id="rSack">—</span></div>
+      </div>
+      <div class="note" id="warn"></div>
+    </div>
+
+    <div class="card">
+      <h2>Telefon</h2>
+      <div class="chips" id="deviceChips"></div>
+      <div class="row" style="margin-top:9px">
+        <label class="check"><input type="checkbox" id="safeToggle" checked> Sikker zone (notch/hjemmestreg)</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Reklamens format</h2>
+      <div class="chips" id="aspectChips"></div>
+      <div class="note">Stand-in, ikke rigtige reklamer — men samme
+        <b>object-fit</b> og samme slørrede baggrund som appen bruger.</div>
+    </div>
+
+    <div class="card">
+      <h2>Mønter</h2>
+      <div class="btns">
+        <button class="btn gold" id="dropOne">Smid en mønt</button>
+        <button class="btn" id="dropTen">Ti</button>
+        <button class="btn" id="resetCoins">Nulstil</button>
+      </div>
+      <div class="note" id="audioNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Tilbage i appen</h2>
+      <div class="btns">
+        <button class="btn gold" id="copyCss">Kopiér CSS</button>
+        <button class="btn" id="resetAll">Nulstil alt</button>
+      </div>
+      <pre id="cssOut"></pre>
+    </div>
+
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="frames.js"></script>
+<script src="coin-sack-engine.js"></script>
+<script>
+(function () {
+'use strict';
+
+const $ = s => document.querySelector(s);
+const phone = $('#phone');
+const screenEl = $('#screen');
+const feed = $('#feed');
+
+/* ── Hvad der kan skrues på ───────────────────────────────────────────────── */
+
+const DEVICES = [
+  { id: 'iphone12', name: 'iPhone 12–14', w: 390, h: 844, top: 47, bottom: 34 },
+  { id: 'max',      name: '15 Pro Max',   w: 430, h: 932, top: 59, bottom: 34 },
+  { id: 'pixel7',   name: 'Pixel 7',      w: 412, h: 915, top: 24, bottom: 24 },
+  { id: 'se',       name: 'iPhone SE',    w: 375, h: 667, top: 20, bottom: 0 },
+];
+
+const ASPECTS = [
+  { id: '9:16',  name: '9:16', w: 1080, h: 1920 },
+  { id: '4:5',   name: '4:5',  w: 1080, h: 1350 },
+  { id: '1:1',   name: '1:1',  w: 1080, h: 1080 },
+  { id: '16:9',  name: '16:9', w: 1280, h: 720 },
+  { id: 'mix',   name: 'Bland', w: 0, h: 0 },
+];
+
+// Startværdierne er dem der står i globals.css lige nu.
+const DEFAULTS = {
+  '--bar-h': 52, '--frame-x': 32, '--frame-y': 40,
+  '--sack-w': 62, '--sack-h': 90,
+};
+
+const SLIDERS = [
+  { k: '--bar-h',   label: 'Bjælke', min: 28, max: 96 },
+  { k: '--frame-x', label: 'Side',   min: 0,  max: 80 },
+  { k: '--frame-y', label: 'Top/bund', min: 0, max: 120 },
+  { k: '--sack-w',  label: 'Sæk bred', min: 32, max: 140, sack: true },
+  { k: '--sack-h',  label: 'Sæk høj',  min: 48, max: 160, sack: true },
+];
+
+const state = {
+  device: 'iphone12',
+  safe: true,
+  frame: window.Frames.DEFAULT_FRAME,
+  aspect: '9:16',
+  vars: Object.assign({}, DEFAULTS),
+  coins: 0,
+  started: false,
+};
+
+const device = () => DEVICES.find(d => d.id === state.device);
+const safeTop = () => (state.safe ? device().top : 0);
+const safeBottom = () => (state.safe ? device().bottom : 0);
+
+/* ── Reklame-stand-ins ────────────────────────────────────────────────────── */
+
+const PALETTE = [
+  ['#2b5876', '#4e4376'], ['#c31432', '#240b36'], ['#0f2027', '#2c5364'],
+  ['#41295a', '#2f0743'], ['#134e5e', '#71b280'], ['#ff512f', '#dd2476'],
+];
+
+function creative(w, h, i) {
+  const c = PALETTE[i % PALETTE.length];
+  const r = Math.min(w, h);
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="' + c[0] + '"/><stop offset="1" stop-color="' + c[1] + '"/>' +
+    '</linearGradient></defs>' +
+    '<rect width="' + w + '" height="' + h + '" fill="url(#g)"/>' +
+    '<rect x="8" y="8" width="' + (w - 16) + '" height="' + (h - 16) + '" fill="none" ' +
+    'stroke="rgba(255,255,255,.3)" stroke-width="4" stroke-dasharray="18 12"/>' +
+    '<circle cx="' + w / 2 + '" cy="' + h / 2 + '" r="' + r * 0.19 + '" fill="rgba(255,255,255,.1)"/>' +
+    '<text x="' + w / 2 + '" y="' + h / 2 + '" fill="rgba(255,255,255,.92)" ' +
+    'font-family="sans-serif" font-size="' + r * 0.085 + '" font-weight="700" ' +
+    'text-anchor="middle" dominant-baseline="central">' + w + '&#215;' + h + '</text>' +
+    '</svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+const SLIDES = 6;
+
+function buildFeed() {
+  const pool = ASPECTS.filter(a => a.id !== 'mix');
+  feed.innerHTML = '';
+  for (let i = 0; i < SLIDES; i++) {
+    const a = state.aspect === 'mix'
+      ? pool[i % pool.length]
+      : pool.find(x => x.id === state.aspect);
+    const src = creative(a.w, a.h, i);
+    const slide = document.createElement('section');
+    slide.className = 'slide';
+    slide.dataset.index = String(i);
+    slide.innerHTML =
+      '<div class="vad">' +
+      '<img class="vad-backdrop" alt="" src="' + src + '">' +
+      '<img class="vad-media" alt="" src="' + src + '">' +
+      '<div class="vad-badge">Ad</div>' +
+      '<button class="vad-sound">🔊</button>' +
+      '<button class="vad-skip">Skip 5</button>' +
+      '</div>';
+    feed.appendChild(slide);
+  }
+  watchSlides();
+}
+
+/* En mønt pr. slide man kommer forbi — samme følelse som i appen, hvor
+   useSlideProgress udbetaler for det man faktisk har set. */
+let io = null;
+const counted = new Set();
+
+function watchSlides() {
+  if (io) io.disconnect();
+  counted.clear();
+  io = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const i = e.target.dataset.index;
+      if (counted.has(i)) continue;
+      counted.add(i);
+      if (state.started) drop(1);
+    }
+  }, { root: feed, threshold: 0.6 });
+  feed.querySelectorAll('.slide').forEach(s => io.observe(s));
+}
+
+/* ── Sækken ───────────────────────────────────────────────────────────────── */
+
+const SACK = {
+  style: 'artsack',
+  art: {
+    bg: '../sack/sack-bg.png',
+    bgB: '../sack/sack-bg-b.png',
+    ringBack: '../sack/ring-back.png',
+    fg: '../sack/sack-fg.png',
+    ringFront: '../sack/ring-front.png',
+  },
+  fillCount: 14,
+  tempo: 0.85,
+  glintStyle: 'star',
+  soundStyle: 'classic',
+  soundOn: true,
+  restitution: 0.42,
+  friction: 0.58,
+  gravity: 1.5,
+  bodyScale: 0.72,
+  spin: 0.5,
+  density: 0.006,
+};
+
+let sack = null;
+
+function buildSack() {
+  if (sack) { try { sack.destroy(); } catch (e) {} sack = null; }
+  if (!window.Matter || !window.CoinSack) return;
+  sack = new window.CoinSack($('#sack'), SACK);
+  // Mønter tjent mens den var væk hører stadig til i sækken.
+  for (let i = 0; i < state.coins; i++) sack.addCoin();
+}
+
+/* Begge scripts kommer udefra, så de kan stadig være undervejs. Og de skal
+   nævnes hver for sig: da coin-sack-engine.js døde af et navnesammenstød med
+   frames.js, sagde en sæk der bare kaldte `new CoinSack` ingenting — den kastede
+   en fejl der slog resten af opsætningen ihjel, og siden så bare tom ud. */
+function waitForMatter(attempt) {
+  if (window.Matter && window.CoinSack) { buildSack(); audioNote(); return; }
+  if (attempt < 40) { setTimeout(() => waitForMatter(attempt + 1), 150); return; }
+  const el = $('#audioNote');
+  el.className = 'note warn';
+  el.textContent = !window.Matter
+    ? 'Matter.js kom aldrig — er du offline?'
+    : 'coin-sack-engine.js kom aldrig igennem — kig i konsollen.';
+}
+
+function drop(n) {
+  state.coins += n;
+  $('#coinValue').textContent = state.coins.toLocaleString('da-DK');
+  if (sack) for (let i = 0; i < n; i++) sack.addCoin();
+  audioNote();
+}
+
+/* Præcis den kur der ligger i AdCoinCounter, og som endnu aldrig er set virke:
+   browseren nægter lyd før siden er rørt, og motoren bygger kun lydkonteksten
+   én gang — ved fødslen, længe før nogen har rørt noget. Så byg den inde i et
+   klik, og genstart den uanset hvad den selv påstår om sin tilstand. */
+function wake() {
+  if (!sack) return;
+  sack._ensureAudio();
+  if (sack.audio && sack.audio.state !== 'running') sack.audio.resume();
+  audioNote();
+}
+['pointerdown', 'touchend', 'keydown'].forEach(e =>
+  window.addEventListener(e, wake, { passive: true }));
+
+function audioNote() {
+  const el = $('#audioNote');
+  if (!sack) { el.textContent = 'Sækken bygges …'; el.className = 'note'; return; }
+  const st = sack.audio ? sack.audio.state : 'ingen';
+  const ok = st === 'running';
+  el.className = 'note' + (ok ? '' : ' warn');
+  el.textContent = ok
+    ? 'Lyd: kører. Mønterne kan høres uden at reklamen er unmutet.'
+    : 'Lyd: ' + st + ' — tryk Start, eller klik på siden.';
+}
+
+/* ── Guld-ornamentet ──────────────────────────────────────────────────────── */
+
+/* Appens egen udgave læser vinduets koordinater, fordi lærredet er fixed til
+   browservinduet. Her er lærredet spændt ud over .screen, så det samme mål
+   skal tages i forhold til skærmens overkant. */
+function windowRect() {
+  const bar = $('.action-bar');
+  const bottom = $('.bottom-bar');
+  if (!bar || !bottom) return null;
+  const css = getComputedStyle(phone);
+  const fx = parseFloat(css.getPropertyValue('--frame-x'));
+  const fy = parseFloat(css.getPropertyValue('--frame-y'));
+  if (!isFinite(fx) || !isFinite(fy)) return null;
+  const origin = screenEl.getBoundingClientRect().top;
+  const top = bar.getBoundingClientRect().bottom - origin + fy;
+  const foot = bottom.getBoundingClientRect().top - origin - fy;
+  return { x: fx, y: top, w: screenEl.clientWidth - fx * 2, h: foot - top };
+}
+
+function paintOrnament() {
+  const c = $('#ornament');
+  if (!window.Frames.isOrnate(state.frame)) { c.style.display = 'none'; return; }
+  c.style.display = 'block';
+  const rect = windowRect();
+  if (rect && rect.w > 0 && rect.h > 0) {
+    window.Frames.drawOrnate(c, rect, state.frame === '13a');
+  }
+}
+
+/* ── Tallene ──────────────────────────────────────────────────────────────── */
+
+const NINE_SIXTEEN = 9 / 16;
+
+function measurements() {
+  const d = device(), v = state.vars;
+  const w = d.w - v['--frame-x'] * 2;
+  const h = d.h
+    - (safeTop() + v['--bar-h'] + v['--frame-y'])
+    - (safeBottom() + v['--bar-h'] + v['--frame-y']);
+  return { w, h, ratio: h > 0 ? w / h : 0, ceiling: v['--bar-h'] + v['--frame-y'] };
+}
+
+function readout() {
+  const m = measurements();
+  const v = state.vars;
+
+  $('#rWin').textContent = m.w + ' × ' + Math.round(m.h) + ' px';
+
+  const off = Math.abs(m.ratio - NINE_SIXTEEN) / NINE_SIXTEEN;
+  const good = off < 0.01;
+  $('#rRatio').innerHTML =
+    '<span class="' + (good ? 'ok' : 'bad') + '">' + m.ratio.toFixed(3) + '</span> ' +
+    '<em>' + (good ? '✓ 9:16' : '✗ 9:16 er 0.563') + '</em>';
+
+  const room = v['--sack-h'] <= m.ceiling;
+  $('#rSack').innerHTML =
+    v['--sack-h'] + ' px <em>af</em> ' +
+    '<span class="' + (room ? 'ok' : 'bad') + '">' + m.ceiling + ' px loft</span>';
+
+  const warn = $('#warn');
+  const msgs = [];
+  if (m.h <= 0) msgs.push('Rammen har spist hele vinduet.');
+  if (!good) msgs.push(
+    'Vinduet er ikke længere 9:16. Reklamer i højformat får sorte kanter ' +
+    'eller bliver beskåret for at passe.');
+  if (!room) msgs.push(
+    'Sækken er højere end bjælken plus toprammen, så den rager op i notchen. ' +
+    'Loftet er --bar-h + --frame-y.');
+  warn.className = 'note' + (msgs.length ? ' warn' : '');
+  warn.textContent = msgs.join(' ');
+}
+
+function exportCss() {
+  const v = state.vars;
+  const line = (k, val) => '  <span class="k">' + k + '</span>: ' + val + 'px;';
+  $('#cssOut').innerHTML = [
+    ':root {',
+    line('--bar-h', v['--bar-h']),
+    line('--frame-x', v['--frame-x']),
+    line('--frame-y', v['--frame-y']),
+    '',
+    line('--sack-w', v['--sack-w']),
+    line('--sack-h', v['--sack-h']),
+    '}',
+  ].join('\n');
+}
+
+function cssText() {
+  const v = state.vars;
+  return [
+    ':root {',
+    '  --bar-h: ' + v['--bar-h'] + 'px;',
+    '  --frame-x: ' + v['--frame-x'] + 'px;',
+    '  --frame-y: ' + v['--frame-y'] + 'px;',
+    '',
+    '  --sack-w: ' + v['--sack-w'] + 'px;',
+    '  --sack-h: ' + v['--sack-h'] + 'px;',
+    '}',
+    '',
+    '/* Ramme: ' + state.frame + ' */',
+  ].join('\n');
+}
+
+/* ── Tegn det hele ────────────────────────────────────────────────────────── */
+
+function apply() {
+  const d = device();
+  screenEl.style.width = d.w + 'px';
+  screenEl.style.height = d.h + 'px';
+  phone.style.setProperty('--safe-top', safeTop() + 'px');
+  phone.style.setProperty('--safe-bottom', safeBottom() + 'px');
+  phone.dataset.frame = state.frame;
+  for (const k in state.vars) phone.style.setProperty(k, state.vars[k] + 'px');
+
+  $('#notch').style.display = state.safe && d.top >= 40 ? 'block' : 'none';
+  $('#stageNote').textContent =
+    d.name + ' — ' + d.w + '×' + d.h +
+    (state.safe ? ' med sikker zone ' + d.top + '/' + d.bottom : ' uden sikker zone');
+
+  document.querySelectorAll('#frameChips .chip').forEach(c =>
+    c.classList.toggle('on', c.dataset.id === state.frame));
+  document.querySelectorAll('#gatePicker .frame-chip').forEach(c =>
+    c.classList.toggle('is-on', c.dataset.id === state.frame));
+  document.querySelectorAll('#deviceChips .chip').forEach(c =>
+    c.classList.toggle('on', c.dataset.id === state.device));
+  document.querySelectorAll('#aspectChips .chip').forEach(c =>
+    c.classList.toggle('on', c.dataset.id === state.aspect));
+
+  paintOrnament();
+  readout();
+  exportCss();
+}
+
+/* ── Panelet ──────────────────────────────────────────────────────────────── */
+
+function buildChips(host, items, onPick) {
+  host.innerHTML = '';
+  for (const it of items) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.dataset.id = it.id;
+    b.textContent = it.name;
+    if (it.title) b.title = it.title;
+    b.addEventListener('click', () => onPick(it.id));
+    host.appendChild(b);
+  }
+}
+
+function buildGatePicker() {
+  const host = $('#gatePicker');
+  host.innerHTML = '';
+  for (const group of ['Minimal', 'Pixel', 'Guld']) {
+    const g = document.createElement('div');
+    g.className = 'frame-group';
+    g.innerHTML = '<div class="frame-group-name">' + group + '</div>';
+    const chips = document.createElement('div');
+    chips.className = 'frame-chips';
+    for (const f of window.Frames.FRAMES.filter(f => f.group === group)) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'frame-chip';
+      b.dataset.id = f.id;
+      b.title = f.note;
+      b.innerHTML = '<span class="frame-chip-id">' + f.id + '</span>' + f.name;
+      b.addEventListener('click', () => { state.frame = f.id; apply(); });
+      chips.appendChild(b);
+    }
+    g.appendChild(chips);
+    host.appendChild(g);
+  }
+}
+
+function buildSliders() {
+  const host = $('#sliders');
+  host.innerHTML = '';
+  for (const s of SLIDERS) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    // autocomplete="off", ellers genskaber Chrome skydernes gamle værdier ved
+    // et reload uden at sige det til nogen — og så står skyderen ét sted mens
+    // telefonen står et andet.
+    row.innerHTML =
+      '<label>' + s.label + '</label>' +
+      '<input type="range" autocomplete="off" min="' + s.min + '" max="' + s.max + '" step="1">' +
+      '<span class="num"></span>';
+    const range = row.querySelector('input');
+    const num = row.querySelector('.num');
+    const show = () => { num.textContent = state.vars[s.k] + 'px'; range.value = state.vars[s.k]; };
+    range.addEventListener('input', () => {
+      state.vars[s.k] = Number(range.value);
+      num.textContent = range.value + 'px';
+      apply();
+    });
+    // Sækken måler sit lærred når den bygges, så en ny størrelse kræver en ny
+    // sæk. Først når du slipper — ellers bygges den om for hver pixel.
+    if (s.sack) range.addEventListener('change', buildSack);
+    s.show = show;
+    host.appendChild(row);
+  }
+}
+
+function refreshSliders() { for (const s of SLIDERS) if (s.show) s.show(); }
+
+/* ── Ledninger ────────────────────────────────────────────────────────────── */
+
+buildGatePicker();
+buildSliders();
+buildChips($('#frameChips'), window.Frames.FRAMES.map(f =>
+  ({ id: f.id, name: f.id + ' ' + f.name, title: f.note })), id => { state.frame = id; apply(); });
+buildChips($('#deviceChips'), DEVICES, id => { state.device = id; apply(); });
+buildChips($('#aspectChips'), ASPECTS, id => { state.aspect = id; buildFeed(); apply(); });
+
+$('#safeToggle').addEventListener('change', e => { state.safe = e.target.checked; apply(); });
+
+$('#startBtn').addEventListener('click', () => {
+  $('#gate').style.display = 'none';
+  state.started = true;
+  wake();
+});
+
+$('#dropOne').addEventListener('click', () => drop(1));
+$('#dropTen').addEventListener('click', () => drop(10));
+$('#resetCoins').addEventListener('click', () => {
+  state.coins = 0;
+  $('#coinValue').textContent = '0';
+  buildSack();
+});
+
+$('#copyCss').addEventListener('click', async () => {
+  const btn = $('#copyCss');
+  try {
+    await navigator.clipboard.writeText(cssText());
+    btn.textContent = 'Kopieret ✓';
+  } catch (e) {
+    btn.textContent = 'Markér selv i feltet';
+  }
+  setTimeout(() => { btn.textContent = 'Kopiér CSS'; }, 1600);
+});
+
+$('#resetAll').addEventListener('click', () => {
+  state.vars = Object.assign({}, DEFAULTS);
+  state.frame = window.Frames.DEFAULT_FRAME;
+  refreshSliders();
+  apply();
+  buildSack();
+});
+
+refreshSliders();
+buildFeed();
+apply();
+waitForMatter(0);
+audioNote();
+
+// Ornamentet er malet, ikke stylet, så det skal males om når kassen skifter mål.
+new ResizeObserver(paintOrnament).observe(screenEl);
+
+})();
+</script>
+</body>
+</html>
