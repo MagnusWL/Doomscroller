@@ -75,16 +75,6 @@ export default function Feed() {
     setActiveIndex(Math.round(feed.scrollTop / feed.clientHeight));
   };
 
-  const handleBuyAd = async () => {
-    setBuying(true);
-    try {
-      const ad = await captureActiveAd(feedRef.current);
-      if (ad) inventory.add(ad);
-    } finally {
-      setBuying(false);
-    }
-  };
-
   const handleBuyAdWithPrice = async (slideId, price) => {
     if (coins.coins < price) return;
     coins.spend(price);
@@ -97,8 +87,12 @@ export default function Feed() {
     }
   };
 
-  // There's nothing to capture until the ad for this slide has arrived.
-  const buyable = filled.has(slides[activeIndex]);
+  // Same gate the on-video price button uses: there's nothing to capture
+  // until the ad has arrived, and no buying it without the coins to cover it.
+  const currentSlideId = slides[activeIndex];
+  const currentPrice = currentSlideId != null ? priceFor(currentSlideId) : 0;
+  const adLoaded = currentSlideId != null && filled.has(currentSlideId);
+  const canAfford = coins.coins >= currentPrice;
 
   const handleBuyAutoscroll = () => {
     if (coins.coins < AUTOSCROLL_PRICE) return;
@@ -134,7 +128,13 @@ export default function Feed() {
       <ScrollHint visible={hintVisible} />
 
       <div className="bottom-actions">
-        <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
+        <BuyAdButton
+          price={currentPrice}
+          adLoaded={adLoaded}
+          canAfford={canAfford}
+          busy={buying}
+          onClick={() => handleBuyAdWithPrice(currentSlideId, currentPrice)}
+        />
         <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
         <AutoScrollToggle
           unlocked={autoScrollUnlocked}
