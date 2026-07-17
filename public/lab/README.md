@@ -40,11 +40,38 @@ slørrede baggrund som appen, så rammen behandler dem ens.
 Appen fjerner også bagte sorte bjælker inde i reklamefilerne (`lib/letterbox.js`).
 Det gør lab'et ikke — dets stand-ins har ingen bjælker at fjerne.
 
+## De tre temaer
+
+`14b` Dæmpet messing, `14c` Kobber / rosa, `14f` Gunmetal + kobber. De blev
+valgt ud af seks metaller, som selv var én vægt af syv rammer — resten er væk.
+
+Et tema er **fire ting der skal være enige**:
+
+| | hvor |
+|---|---|
+| Ornamentets palet | `PALETTES` i `lib/frames.js` — males på et lærred |
+| Chrome og vignette | `[data-frame]` i `globals.css` — skærm, bjælker, hårlinje |
+| Sækkens grafik | `public/sack/14b\|14c\|14f/` — tonede PNG'er |
+| Telefonens kant | kun lab'et; appen bor i en rigtig telefon |
+
+Sækkens tre sæt hedder 16a/16b/16c hos designerne, én til hvert tema — så
+rammens eget id navngiver mappen, og der er ikke noget at holde i takt.
+`shade.png` er fælles: det er en mørk kopi af kroppen der lægges over mønterne
+ved 30%, så mønter dybt i sækken læses som nedsænkede. Den er ligeglad med farven.
+
+**Sækkene er tonede, mønterne er ikke.** Ét guld i alle tre — handoff'en er
+udtrykkelig om det. Og hele sækken males nu i en `1/2.4` buffer og skaleres op
+nearest-neighbour, så kunsten er lige så klodset som mønterne. Det træder i
+stedet for `devicePixelRatio`, så sækken er lav-opløst med vilje: lærredet måler
+92×150 hvor det før var 220×360.
+
 ## Lyden
 
-To lag, og de er uafhængige af reklamens lyd:
+Tre lag, og de er uafhængige af reklamens lyd:
 
-- **Ved hver mønt:** motorens synth-klink, med ét af **fjorten rigtige møntklip**
+- **Når en mønt fødes:** en flip-lyd (`coin-flip.mp3`), afspillet ved én af fire
+  tilfældige hastigheder plus en lille rysten, så ingen to mønter lyder ens.
+- **Når den lander:** motorens synth-klink, med ét af **fjorten rigtige møntklip**
   lagt ovenpå ved lav volumen. Kun *hvilket* klip er tilfældigt — der er aldrig
   stilhed.
 - **Ved et køb:** en pixel-ka-ching. Fire nære afarter, **A–D**; handoff'en peger

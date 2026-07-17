@@ -1,6 +1,6 @@
 'use client';
 
-import { FRAMES, GROUPS } from '@/lib/frames';
+import { FRAMES } from '@/lib/frames';
 
 // Browsers won't let anything make a sound until the page has been clicked or
 // tapped, and scrolling doesn't count — a reader could wheel through the whole
@@ -19,25 +19,20 @@ export default function StartGate({ frame, onFrameChange, onStart }) {
         </p>
 
         <div className="frame-picker">
-          {GROUPS.map(group => (
-            <div className="frame-group" key={group}>
-              <div className="frame-group-name">{group}</div>
-              <div className="frame-chips">
-                {FRAMES.filter(f => f.group === group).map(f => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className={`frame-chip${f.id === frame ? ' is-on' : ''}`}
-                    onClick={() => onFrameChange(f.id)}
-                    title={f.note}
-                  >
-                    <span className="frame-chip-id">{f.id}</span>
-                    {f.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+          <div className="frame-chips">
+            {FRAMES.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                className={`frame-chip${f.id === frame ? ' is-on' : ''}`}
+                onClick={() => onFrameChange(f.id)}
+                title={f.note}
+              >
+                <span className="frame-chip-id">{f.id}</span>
+                {f.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button className="start-btn" onClick={onStart} autoFocus>

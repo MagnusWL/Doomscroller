@@ -32,12 +32,20 @@ body {
 .phone {
   position: relative;
   flex: none;
-  border: 10px solid #2b2f34;
+  border: 10px solid var(--bezel-in, #221c11);
   border-radius: 46px;
   background: var(--screen-bg);
-  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 0 0 1px var(--bezel-out, #3a3120), 0 26px 70px rgba(0, 0, 0, 0.65);
   overflow: hidden;
 }
+
+/* Telefonens fysiske kant, tonet med temaet. Kun lab'et har en — appen bor i en
+   rigtig telefon og maler ikke dens kant. Farverne er handoff'ens `chrome`-
+   tabel, som også dækker skærmen og bjælkerne; de to hører til appen og står
+   nede i afsnit 2. */
+[data-frame='14b'] { --bezel-in: #221c11; --bezel-out: #3a3120; }
+[data-frame='14c'] { --bezel-in: #241812; --bezel-out: #402c22; }
+[data-frame='14f'] { --bezel-in: #20252a; --bezel-out: #454d55; }
 
 /* Alt i appen er fixed til browservinduet. Her er telefonen vinduet, så
    .screen er det alting hænger på. */
@@ -231,19 +239,13 @@ pre .k { color: #f5be3c; }
   --sack-x: 0px;
   --sack-y: 0px;
 
-  /* Hvad de syv rammer er uenige om. */
-  --screen-bg: #000;
-  --bar-bg: rgba(0, 0, 0, 0.55);
-  --bar-blur: blur(8px);
-  --bar-line: transparent;
-  --window-bg: #000;
-  --window-radius: 16px;
-  --seam: none;
-  --seam-h: 0px;
-  --pix: transparent;
-  --pix-size: 0px;
-  --pix-inset: 0px;
-  --window-edge: none;
+  /* Hvad et tema sætter. Værdierne er 14b's, som er DEFAULT_FRAME. */
+  --screen-bg: #100d07;
+  --bar-bg: #141007;
+  --bar-blur: none;
+  --bar-line: rgba(230, 210, 150, 0.09);
+  --window-bg: #100c07;
+  --window-radius: 6px;
 }
 
 .screen {
@@ -476,131 +478,47 @@ pre .k { color: #f5be3c; }
 
 /* ── The seven frames ────────────────────────────────────────────────────── */
 
-[data-frame='11c'], [data-frame='12a'] {
-  --screen-bg: #060708;
-  --bar-bg: rgba(255, 255, 255, 0.05);
-  --bar-blur: blur(10px);
-  --window-bg: linear-gradient(160deg, #0c0e11, #070809);
-  --window-radius: 18px;
-}
-[data-frame='11c'] { --bar-line: rgba(255, 255, 255, 0.09); }
-
-[data-frame='11f'], [data-frame='12b'] {
-  --screen-bg: #0b0908;
-  --bar-bg: #100c0a;
+/* What every theme shares. The seam and corner-pixel machinery that used to
+   live here went with the pixel frames — nothing sets those variables now. */
+[data-frame] {
   --bar-blur: none;
-  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
-}
-[data-frame='11f'] {
-  --bar-line: rgba(245, 190, 60, 0.22);
-  --window-radius: 18px;
-}
-
-[data-frame='12a'] {
-  --seam: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 4px, transparent 4px 9px);
-  --seam-h: 4px;
-  --pix: rgba(255, 255, 255, 0.4);
-  --pix-size: 5px;
-  --pix-inset: 7px;
-}
-
-[data-frame='12b'] {
-  --window-radius: 16px;
-  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.4) 0 4px, transparent 4px 11px);
-  --seam-h: 4px;
-}
-
-[data-frame='12c'] {
-  --screen-bg: #090807;
-  --bar-bg: rgba(255, 232, 196, 0.05);
-  --bar-blur: blur(10px);
-  --window-bg: linear-gradient(160deg, #100c09, #0a0705);
-  --window-radius: 18px;
-  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.5) 0 5px, rgba(245, 190, 60, 0.14) 5px 10px);
-  --seam-h: 5px;
-  --pix: rgba(245, 190, 60, 0.55);
-  --pix-size: 6px;
-  --pix-inset: 8px;
-}
-
-[data-frame='13a'], [data-frame='13b'] {
-  --screen-bg: #0b0908;
-  --bar-bg: #0e0b08;
-  --bar-blur: none;
-  --bar-line: rgba(245, 190, 60, 0.14);
-  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
-  --window-radius: 6px;
-}
-
-/* The six metals: 13b's frame in another colour, with a matching vignette
-   behind the ad — metal in the middle, dark brown at the edges, so a creative
-   that can't fill the window shows some of it.
-
-   --metal-mid and --metal-deep are the same two roles as in PALETTES in
-   lib/frames.js, and the only place the two lists overlap: the ornament is
-   painted on a canvas and needs them in JS, the vignette is a gradient and
-   needs them here. Change one, change the other. */
-[data-frame^='14'] {
-  --screen-bg: #0b0c0e;
-  --bar-bg: #0e1013;
-  --bar-blur: none;
-  --bar-line: rgba(255, 255, 255, 0.06);
   --window-radius: 6px;
   --window-bg: radial-gradient(ellipse 86% 66% at 50% 44%,
     var(--metal-mid) 0%, var(--metal-deep) 36%, #1c1209 70%, #100c07 100%);
 }
-[data-frame='14a'] { --metal-mid: #8a6636; --metal-deep: #3e2c17; }
-[data-frame='14b'] { --metal-mid: #8f7d42; --metal-deep: #41381a; }
-[data-frame='14c'] { --metal-mid: #a5654a; --metal-deep: #4a2619; }
-[data-frame='14d'] { --metal-mid: #8b929c; --metal-deep: #3a3e45; }
-[data-frame='14e'] { --metal-mid: #77602c; --metal-deep: #332a13; }
-[data-frame='14f'] { --metal-mid: #6e747b; --metal-deep: #2c3036; }
 
-/* Chunky pixel seams along the bars' inner edges. */
-.action-bar::after,
-.bottom-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: var(--seam-h);
-  background: var(--seam);
-  pointer-events: none;
-}
-.action-bar::after { bottom: calc(0px - var(--seam-h)); }
-.bottom-bar::before { top: calc(0px - var(--seam-h)); }
+/* Each theme tones the chrome as well as the ornament: the screen behind it
+   all, the bars, and their hairline — straight from the handoff's `chrome`
+   table. The vignette behind the ad is the metal in the middle fading to dark
+   brown at the edges, so a creative that can't fill the window shows some of
+   it.
 
-/* Four pixels just inside the window's corners, as one element with four
-   backgrounds — cheaper than four divs in every slide. */
-.vad::after {
-  content: '';
-  position: absolute;
-  inset: var(--pix-inset);
-  z-index: 3;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0),
-    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0);
-  background-size: var(--pix-size) var(--pix-size);
-  background-position: 0 0, 100% 0, 0 100%, 100% 100%;
-  background-repeat: no-repeat;
+   --metal-mid and --metal-deep repeat two roles from PALETTES in lib/frames.js,
+   and are the only place the two lists overlap: the ornament is painted on a
+   canvas and needs them in JS, the vignette is a gradient and needs them here.
+   Change one, change the other. */
+[data-frame='14b'] {
+  --metal-mid: #8f7d42;
+  --metal-deep: #41381a;
+  --screen-bg: #100d07;
+  --bar-bg: #141007;
+  --bar-line: rgba(230, 210, 150, 0.09);
 }
 
-/* 12b's pixel-stitched gold border, hugging all four window edges. */
-[data-frame='12b'] .vad::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px);
-  background-size: 100% 4px, 100% 4px, 4px 100%, 4px 100%;
-  background-position: 0 0, 0 100%, 0 0, 100% 0;
-  background-repeat: no-repeat;
+[data-frame='14c'] {
+  --metal-mid: #a5654a;
+  --metal-deep: #4a2619;
+  --screen-bg: #120b08;
+  --bar-bg: #160d0a;
+  --bar-line: rgba(240, 200, 175, 0.1);
+}
+
+[data-frame='14f'] {
+  --metal-mid: #6e747b;
+  --metal-deep: #2c3036;
+  --screen-bg: #0f1113;
+  --bar-bg: #151a1e;
+  --bar-line: rgba(154, 160, 166, 0.2);
 }
 
 /* The gold frames are painted, not styled: above the window, below the bars
@@ -650,14 +568,6 @@ pre .k { color: #f5be3c; }
   flex-direction: column;
   gap: 12px;
   text-align: left;
-}
-
-.frame-group-name {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
-  margin-bottom: 6px;
 }
 
 .frame-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1017,21 +927,26 @@ function watchSlides() {
 function sackOpts() {
   return {
     style: 'artsack',
-    art: {
-      bg: '../sack/sack-bg.png',
-      bgB: '../sack/sack-bg-b.png',
-      ringBack: '../sack/ring-back.png',
-      fg: '../sack/sack-fg.png',
-      ringFront: '../sack/ring-front.png',
-    },
-    fillCount: 14,
+    // Sækken er tonet til temaet — det er hele pointen med de tre. Stien
+    // adskiller sig fra appens, fordi lab'et åbnes som en fil ved siden af.
+    art: window.Frames.sackArt(state.frame, '../sack/'),
+    // Tonede sække, utonede mønter: ét guld i alle tre, som handoff'en siger.
+    coinTones: window.Frames.COIN_TONES,
+    // Hele sækken males i en 1/2.4 buffer og skaleres op nearest-neighbour, så
+    // kunsten læses lige så klodset som mønterne. Den træder i stedet for dpr,
+    // så en pixeleret sæk er lav-opløst med vilje.
+    pixelate: true,
+    pixelSize: 2.4,
+    fillCount: 16,
     tempo: 0.85,
     glintStyle: 'star',
     soundStyle: 'classic',
-    // Ét af fjorten rigtige møntklip lægges oven på synth-klinket ved hver
-    // mønt. Kun hvilket klip er tilfældigt — der er aldrig stilhed. De er
-    // data:-URI'er; se coin-samples.js for hvorfor det ikke er filstier.
+    // Ét af fjorten rigtige møntklip oven på synth-klinket ved hver mønt, og en
+    // flip-lyd i det øjeblik mønten fødes. Kun hvilket klip er tilfældigt — der
+    // er aldrig stilhed. Begge er data:-URI'er; se coin-samples.js for hvorfor
+    // det ikke er filstier.
     coinSamples: window.COIN_SAMPLES || null,
+    flipSample: window.COIN_FLIP || null,
     spendStyle: Number(state.spendStyle),
     soundOn: true,
     restitution: 0.42,
@@ -1136,12 +1051,9 @@ function windowRect() {
 }
 
 function paintOrnament() {
-  const c = $('#ornament');
-  if (!window.Frames.isOrnate(state.frame)) { c.style.display = 'none'; return; }
-  c.style.display = 'block';
   const rect = windowRect();
   if (rect && rect.w > 0 && rect.h > 0) {
-    window.Frames.drawOrnate(c, rect, state.frame);
+    window.Frames.drawOrnate($('#ornament'), rect, state.frame);
   }
 }
 
@@ -1418,28 +1330,32 @@ function buildChips(host, items, onPick) {
   }
 }
 
+/* Tre temaer, én flad liste — de blev valgt ud af seks metaller, som selv var
+   én vægt af syv rammer. Der er ikke længere noget at gruppere. */
 function buildGatePicker() {
   const host = $('#gatePicker');
   host.innerHTML = '';
-  for (const group of window.Frames.GROUPS) {
-    const g = document.createElement('div');
-    g.className = 'frame-group';
-    g.innerHTML = '<div class="frame-group-name">' + group + '</div>';
-    const chips = document.createElement('div');
-    chips.className = 'frame-chips';
-    for (const f of window.Frames.FRAMES.filter(f => f.group === group)) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'frame-chip';
-      b.dataset.id = f.id;
-      b.title = f.note;
-      b.innerHTML = '<span class="frame-chip-id">' + f.id + '</span>' + f.name;
-      b.addEventListener('click', () => { state.frame = f.id; apply(); });
-      chips.appendChild(b);
-    }
-    g.appendChild(chips);
-    host.appendChild(g);
+  const chips = document.createElement('div');
+  chips.className = 'frame-chips';
+  for (const f of window.Frames.FRAMES) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'frame-chip';
+    b.dataset.id = f.id;
+    b.title = f.note;
+    b.innerHTML = '<span class="frame-chip-id">' + f.id + '</span>' + f.name;
+    b.addEventListener('click', () => { setFrame(f.id); });
+    chips.appendChild(b);
   }
+  host.appendChild(chips);
+}
+
+/* Sækken bygges om: motoren læser sin grafik én gang, ved fødslen, og de tre
+   sække er tonet hver for sig. */
+function setFrame(id) {
+  state.frame = id;
+  buildSack();
+  apply();
 }
 
 function buildSliders() {
@@ -1477,7 +1393,7 @@ function refreshSliders() { for (const s of SLIDERS) if (s.show) s.show(); }
 buildGatePicker();
 buildSliders();
 buildChips($('#frameChips'), window.Frames.FRAMES.map(f =>
-  ({ id: f.id, name: f.id + ' ' + f.name, title: f.note })), id => { state.frame = id; apply(); });
+  ({ id: f.id, name: f.id + ' ' + f.name, title: f.note })), setFrame);
 buildChips($('#deviceChips'), DEVICES, id => { state.device = id; apply(); });
 buildChips($('#aspectChips'), ASPECTS, id => { state.aspect = id; buildFeed(); apply(); });
 buildChips($('#sackChips'), ANCHORS, setAnchor);

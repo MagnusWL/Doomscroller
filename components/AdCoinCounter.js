@@ -2,33 +2,45 @@
 
 import { useEffect, useRef } from 'react';
 import { CoinSack } from '@/lib/coin-sack-engine';
+import { sackArt, COIN_TONES } from '@/lib/frames';
 
-// Straight from the handoff's approved widget. The engine derives the sack art
-// and the coin radius from the canvas box, so the size lives in CSS and nothing
-// here needs to know about it.
-const SACK = {
-  style: 'artsack',
-  art: {
-    bg: '/sack/sack-bg.png',
-    bgB: '/sack/sack-bg-b.png',
-    ringBack: '/sack/ring-back.png',
-    fg: '/sack/sack-fg.png',
-    ringFront: '/sack/ring-front.png',
-  },
-  fillCount: 14,
-  tempo: 0.85,
-  glintStyle: 'star',
-  soundStyle: 'classic',
-  soundOn: true,
-  restitution: 0.42,
-  friction: 0.58,
-  gravity: 1.5,
-  bodyScale: 0.72,
-  spin: 0.5,
-  density: 0.006,
-};
+// Fourteen real coin clips. One at random lands on top of the synth clink every
+// time a coin is earned — only which clip is random, never whether.
+const COIN_SAMPLES = Array.from({ length: 14 }, (_, i) => `/sack/coin/coin-${i + 1}.wav`);
 
-export default function AdCoinCounter({ coins }) {
+// The handoff's approved widget. The engine derives the sack art and the coin
+// radius from the canvas box, so the size lives in CSS and nothing here needs to
+// know about it — but the theme does, because the sack is tinted to match the
+// frame around it.
+function sackOpts(frame) {
+  return {
+    style: 'artsack',
+    art: sackArt(frame),
+    // Tinted sacks, untinted coins: one gold in every theme, per the handoff.
+    coinTones: COIN_TONES,
+    // The whole sack renders into a 1/2.4 buffer and the browser upscales it
+    // nearest-neighbour, so the art reads as chunky as the coins do. It takes
+    // the place of devicePixelRatio, so this is deliberately low-res.
+    pixelate: true,
+    pixelSize: 2.4,
+    coinSamples: COIN_SAMPLES,
+    flipSample: '/sack/coin-flip.mp3',
+    spendStyle: 1,
+    fillCount: 16,
+    tempo: 0.85,
+    glintStyle: 'star',
+    soundStyle: 'classic',
+    soundOn: true,
+    restitution: 0.42,
+    friction: 0.58,
+    gravity: 1.5,
+    bodyScale: 0.72,
+    spin: 0.5,
+    density: 0.006,
+  };
+}
+
+export default function AdCoinCounter({ coins, frame }) {
   const canvasRef = useRef(null);
   const sackRef = useRef(null);
   // How many coins the sack has been told about, which lags `coins` while
@@ -46,7 +58,7 @@ export default function AdCoinCounter({ coins }) {
     const start = attempt => {
       if (cancelled) return;
       if (window.Matter) {
-        sack = new CoinSack(canvas, SACK);
+        sack = new CoinSack(canvas, sackOpts(frame));
         sackRef.current = sack;
         // Coins earned during the wait still belong in the sack.
         for (let i = 0; i < droppedRef.current; i++) sack.addCoin();
@@ -61,7 +73,10 @@ export default function AdCoinCounter({ coins }) {
       if (sack) sack.destroy();
       sackRef.current = null;
     };
-  }, []);
+    // Rebuilt when the theme changes: the engine reads its art once, at birth.
+    // In practice the frame is picked at the gate and never moves, so this runs
+    // the once — but the sack would be the wrong colour if it ever did.
+  }, [frame]);
 
   // Web Audio won't start until the page has been interacted with, and the
   // engine only tries once — at construction, which is before any interaction

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { drawOrnate, isOrnate } from '@/lib/frames';
+import { drawOrnate } from '@/lib/frames';
 
 // The gold frames are drawn rather than styled, so they need to know where the
 // ad window actually is. The bars are fixed and the side margin is a variable,
@@ -27,12 +27,12 @@ export default function FrameOrnament({ frame }) {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !isOrnate(frame)) return;
+    if (!canvas) return;
 
+    // The frame's id rather than a palette: which metal it is, is the
+    // ornament's own lookup. An id it doesn't know paints nothing.
     const paint = () => {
       const rect = windowRect();
-      // The frame's id rather than a flag: which metal it is, and whether it
-      // carries the studs and the crest, are both lookups the ornament owns.
       if (rect && rect.w > 0 && rect.h > 0) drawOrnate(canvas, rect, frame);
     };
     paint();
@@ -42,6 +42,5 @@ export default function FrameOrnament({ frame }) {
     return () => observer.disconnect();
   }, [frame]);
 
-  if (!isOrnate(frame)) return null;
   return <canvas ref={canvasRef} className="frame-ornament" aria-hidden="true" />;
 }

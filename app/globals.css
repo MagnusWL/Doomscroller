@@ -27,23 +27,20 @@
   --sack-top: calc(var(--frame-y) - var(--sack-h));
 }
 
-/* What the seven frame styles from the handoff actually differ in. Defaults
-   are the frame as it was before they arrived; each [data-frame] below moves
-   some of these. Dimensions are not in here on purpose — the handoff took ours
-   as fixed and varied only the treatment. */
+/* What a theme sets, and what the three [data-frame] blocks further down move.
+   These values are 14b's, which is DEFAULT_FRAME: the theme only reaches <html>
+   from an effect, so the server-rendered markup has no [data-frame] for a beat
+   and would otherwise flash something else.
+
+   Dimensions are not in here on purpose — the handoff took ours as fixed and
+   varied only the treatment. */
 :root {
-  --screen-bg: #000;
-  --bar-bg: rgba(0, 0, 0, 0.55);
-  --bar-blur: blur(8px);
-  --bar-line: transparent;
-  --window-bg: #000;
-  --window-radius: 16px;
-  --seam: none;
-  --seam-h: 0px;
-  --pix: transparent;
-  --pix-size: 0px;
-  --pix-inset: 0px;
-  --window-edge: none;
+  --screen-bg: #100d07;
+  --bar-bg: #141007;
+  --bar-blur: none;
+  --bar-line: rgba(230, 210, 150, 0.09);
+  --window-bg: #100c07;
+  --window-radius: 6px;
 }
 
 html, body {
@@ -347,135 +344,49 @@ html, body {
   text-align: center;
 }
 
-/* ── The seven frames ────────────────────────────────────────────────────── */
+/* ── The three themes ────────────────────────────────────────────────────── */
 
-[data-frame='11c'], [data-frame='12a'] {
-  --screen-bg: #060708;
-  --bar-bg: rgba(255, 255, 255, 0.05);
-  --bar-blur: blur(10px);
-  --window-bg: linear-gradient(160deg, #0c0e11, #070809);
-  --window-radius: 18px;
-}
-[data-frame='11c'] { --bar-line: rgba(255, 255, 255, 0.09); }
-
-[data-frame='11f'], [data-frame='12b'] {
-  --screen-bg: #0b0908;
-  --bar-bg: #100c0a;
+/* What every theme shares. The seam and corner-pixel machinery that used to
+   live here went with the pixel frames — nothing sets those variables now. */
+[data-frame] {
   --bar-blur: none;
-  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
-}
-[data-frame='11f'] {
-  --bar-line: rgba(245, 190, 60, 0.22);
-  --window-radius: 18px;
-}
-
-[data-frame='12a'] {
-  --seam: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 4px, transparent 4px 9px);
-  --seam-h: 4px;
-  --pix: rgba(255, 255, 255, 0.4);
-  --pix-size: 5px;
-  --pix-inset: 7px;
-}
-
-[data-frame='12b'] {
-  --window-radius: 16px;
-  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.4) 0 4px, transparent 4px 11px);
-  --seam-h: 4px;
-}
-
-[data-frame='12c'] {
-  --screen-bg: #090807;
-  --bar-bg: rgba(255, 232, 196, 0.05);
-  --bar-blur: blur(10px);
-  --window-bg: linear-gradient(160deg, #100c09, #0a0705);
-  --window-radius: 18px;
-  --seam: repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.5) 0 5px, rgba(245, 190, 60, 0.14) 5px 10px);
-  --seam-h: 5px;
-  --pix: rgba(245, 190, 60, 0.55);
-  --pix-size: 6px;
-  --pix-inset: 8px;
-}
-
-[data-frame='13a'], [data-frame='13b'] {
-  --screen-bg: #0b0908;
-  --bar-bg: #0e0b08;
-  --bar-blur: none;
-  --bar-line: rgba(245, 190, 60, 0.14);
-  --window-bg: linear-gradient(180deg, #0f0b08, #0a0705);
-  --window-radius: 6px;
-}
-
-/* The six metals: 13b's frame in another colour, with a matching vignette
-   behind the ad — metal in the middle, dark brown at the edges, so a creative
-   that can't fill the window shows some of it.
-
-   --metal-mid and --metal-deep are the same two roles as in PALETTES in
-   lib/frames.js, and the only place the two lists overlap: the ornament is
-   painted on a canvas and needs them in JS, the vignette is a gradient and
-   needs them here. Change one, change the other. */
-[data-frame^='14'] {
-  --screen-bg: #0b0c0e;
-  --bar-bg: #0e1013;
-  --bar-blur: none;
-  --bar-line: rgba(255, 255, 255, 0.06);
   --window-radius: 6px;
   --window-bg: radial-gradient(ellipse 86% 66% at 50% 44%,
     var(--metal-mid) 0%, var(--metal-deep) 36%, #1c1209 70%, #100c07 100%);
 }
-[data-frame='14a'] { --metal-mid: #8a6636; --metal-deep: #3e2c17; }
-[data-frame='14b'] { --metal-mid: #8f7d42; --metal-deep: #41381a; }
-[data-frame='14c'] { --metal-mid: #a5654a; --metal-deep: #4a2619; }
-[data-frame='14d'] { --metal-mid: #8b929c; --metal-deep: #3a3e45; }
-[data-frame='14e'] { --metal-mid: #77602c; --metal-deep: #332a13; }
-[data-frame='14f'] { --metal-mid: #6e747b; --metal-deep: #2c3036; }
 
-/* Chunky pixel seams along the bars' inner edges. */
-.action-bar::after,
-.bottom-bar::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: var(--seam-h);
-  background: var(--seam);
-  pointer-events: none;
-}
-.action-bar::after { bottom: calc(0px - var(--seam-h)); }
-.bottom-bar::before { top: calc(0px - var(--seam-h)); }
+/* Each theme tones the chrome as well as the ornament: the screen behind it
+   all, the bars, and their hairline — straight from the handoff's `chrome`
+   table. The vignette behind the ad is the metal in the middle fading to dark
+   brown at the edges, so a creative that can't fill the window shows some of
+   it.
 
-/* Four pixels just inside the window's corners, as one element with four
-   backgrounds — cheaper than four divs in every slide. */
-.vad::after,
-.fake-ad::after {
-  content: '';
-  position: absolute;
-  inset: var(--pix-inset);
-  z-index: 3;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0),
-    linear-gradient(var(--pix) 0 0), linear-gradient(var(--pix) 0 0);
-  background-size: var(--pix-size) var(--pix-size);
-  background-position: 0 0, 100% 0, 0 100%, 100% 100%;
-  background-repeat: no-repeat;
+   --metal-mid and --metal-deep repeat two roles from PALETTES in lib/frames.js,
+   and are the only place the two lists overlap: the ornament is painted on a
+   canvas and needs them in JS, the vignette is a gradient and needs them here.
+   Change one, change the other. */
+[data-frame='14b'] {
+  --metal-mid: #8f7d42;
+  --metal-deep: #41381a;
+  --screen-bg: #100d07;
+  --bar-bg: #141007;
+  --bar-line: rgba(230, 210, 150, 0.09);
 }
 
-/* 12b's pixel-stitched gold border, hugging all four window edges. */
-[data-frame='12b'] .vad::before,
-[data-frame='12b'] .fake-ad::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-  background-image:
-    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(90deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px),
-    repeating-linear-gradient(0deg, rgba(245, 190, 60, 0.6) 0 4px, transparent 4px 9px);
-  background-size: 100% 4px, 100% 4px, 4px 100%, 4px 100%;
-  background-position: 0 0, 0 100%, 0 0, 100% 0;
-  background-repeat: no-repeat;
+[data-frame='14c'] {
+  --metal-mid: #a5654a;
+  --metal-deep: #4a2619;
+  --screen-bg: #120b08;
+  --bar-bg: #160d0a;
+  --bar-line: rgba(240, 200, 175, 0.1);
+}
+
+[data-frame='14f'] {
+  --metal-mid: #6e747b;
+  --metal-deep: #2c3036;
+  --screen-bg: #0f1113;
+  --bar-bg: #151a1e;
+  --bar-line: rgba(154, 160, 166, 0.2);
 }
 
 /* The gold frames are painted, not styled: above the window, below the bars
@@ -528,14 +439,6 @@ html, body {
   flex-direction: column;
   gap: 12px;
   text-align: left;
-}
-
-.frame-group-name {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
-  margin-bottom: 6px;
 }
 
 .frame-chips {

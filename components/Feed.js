@@ -132,7 +132,7 @@ export default function Feed() {
         </div>
       </div>
 
-      <AdCoinCounter coins={coins.coins} />
+      <AdCoinCounter coins={coins.coins} frame={frame} />
 
       <div className="bottom-bar">
         <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
