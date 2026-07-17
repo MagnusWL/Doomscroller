@@ -8,6 +8,7 @@ import { useInventory } from '@/hooks/useInventory';
 import { useAdCoins } from '@/hooks/useAdCoins';
 import { runVideoSlider } from '@/lib/adcash';
 import { captureActiveAd } from '@/lib/capture';
+import { priceFor } from '@/lib/pricing';
 import AdCoinCounter from '@/components/AdCoinCounter';
 import ScrollHint from '@/components/ScrollHint';
 import VideoAdSlide from '@/components/VideoAdSlide';
@@ -80,6 +81,18 @@ export default function Feed() {
     }
   };
 
+  const handleBuyAdWithPrice = async (slideId, price) => {
+    if (coins.coins < price) return;
+    coins.spend(price);
+    setBuying(true);
+    try {
+      const ad = await captureActiveAd(feedRef.current);
+      if (ad) inventory.add(ad);
+    } finally {
+      setBuying(false);
+    }
+  };
+
   // There's nothing to capture until the ad for this slide has arrived.
   const buyable = filled.has(slides[activeIndex]);
 
@@ -90,8 +103,12 @@ export default function Feed() {
           <section key={id} className="slide" data-index={id} ref={observeSlide}>
             <VideoAdSlide
               feedRef={feedRef}
+              slideId={id}
               onSkip={handleSkip}
               onFilled={() => markFilled(id)}
+              coins={coins.coins}
+              onBuyAd={handleBuyAdWithPrice}
+              buying={buying}
             />
           </section>
         ))}

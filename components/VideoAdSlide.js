@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { loadVideoAd } from '@/lib/vast';
+import { priceFor } from '@/lib/pricing';
+import AdPriceButton from '@/components/AdPriceButton';
 
 const px = url => { new Image().src = url; };
 
@@ -9,7 +11,7 @@ const px = url => { new Image().src = url; };
 // nobody sees, and a wall of autoplaying video gets throttled by the
 // browser. So this only fetches once it reaches the screen, and pauses
 // again whenever it scrolls out of view.
-export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
+export default function VideoAdSlide({ feedRef, slideId, onSkip, onFilled, coins, onBuyAd, buying }) {
   const rootRef = useRef(null);
   const videoRef = useRef(null);
   const fired = useRef(new Set());
@@ -122,6 +124,7 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
   };
 
   const skipReady = skipSecondsLeft != null && skipSecondsLeft <= 0;
+  const price = priceFor(slideId);
 
   return (
     <div
@@ -142,6 +145,16 @@ export default function VideoAdSlide({ feedRef, onSkip, onFilled }) {
         onEnded={handleEnded}
       />
       <div className="vad-badge">Ad</div>
+      <AdPriceButton
+        slideId={slideId}
+        price={price}
+        coins={coins}
+        onBuy={(e) => {
+          e.stopPropagation();
+          onBuyAd(slideId, price);
+        }}
+        disabled={buying}
+      />
       <button className="vad-sound" onClick={toggleMute}>
         {muted ? '🔇' : '🔊'}
       </button>

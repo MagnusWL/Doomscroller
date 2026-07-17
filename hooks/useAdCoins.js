@@ -7,5 +7,8 @@ import { useCallback, useState } from 'react';
 export function useAdCoins() {
   const [coins, setCoins] = useState(0);
   const award = useCallback(() => setCoins(c => c + 1), []);
-  return { coins, award };
+  const spend = useCallback(amount => {
+    setCoins(c => Math.max(0, c - amount));
+  }, []);
+  return { coins, award, spend };
 }
