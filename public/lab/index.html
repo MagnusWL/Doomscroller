@@ -839,7 +839,7 @@ pre .k { color: #f5be3c; }
     <div class="card">
       <h2>Tilbage i appen</h2>
       <div class="btns">
-        <button class="btn gold" id="copyCss">Kopiér CSS</button>
+        <button class="btn gold" id="copyCss">Kopiér alle indstillinger</button>
         <button class="btn" id="resetAll">Nulstil alt</button>
       </div>
       <pre id="cssOut"></pre>
@@ -1287,9 +1287,29 @@ function sackRule() {
   return out;
 }
 
+/* Hele lab'ets tilstand, ikke bare CSS'en. Ikke alt hvad man beslutter herinde
+   er en CSS-variabel — rammen står i JavaScript, ka-ching'en er et tal i
+   sækkens opsætning, og sløret er et helt lag. De står som kommentarer med
+   adressen på, så hele blokken stadig kan sættes direkte ind i globals.css
+   uden at gå i stykker.
+
+   Enheden og reklameformatet er ikke indstillinger, men målene afhænger af dem
+   — derfor står de nederst, så tallene kan læses i den sammenhæng de blev til
+   i. */
 function cssText() {
-  const v = state.vars;
+  const v = state.vars, m = measurements(), d = device();
+  const f = window.Frames.FRAMES.find(x => x.id === state.frame);
+  const spend = SPEND_STYLES.find(s => s.id === state.spendStyle);
+  const hits = collisions();
+  const good = Math.abs(m.ratio - NINE_SIXTEEN) / NINE_SIXTEEN < 0.01;
+  // Strækker, klipper aldrig: et navn der er længere end kolonnen skubber bare
+  // pilen til højre. Klipper man i stedet, løber værdien og adressen sammen.
+  const pad = s => s + '                        '.slice(0, Math.max(1, 21 - s.length));
+
   return [
+    '/* ═══ Doomscroller — indstillinger fra UI-lab ═══════════════════════ */',
+    '',
+    '/* ── app/globals.css ─────────────────────────────────────────────── */',
     ':root {',
     '  --bar-h: ' + v['--bar-h'] + 'px;',
     '  --frame-x: ' + v['--frame-x'] + 'px;',
@@ -1305,7 +1325,22 @@ function cssText() {
     '   0,0 ville flugte med hjørnet; positive tal skubber ind over reklamen. */',
   ].concat(sackRule()).concat([
     '',
-    '/* Ramme: ' + state.frame + ' */',
+    '/* ── Ikke CSS. Hvad de hedder, og hvor de bor: ──────────────────────',
+    '',
+    '   Ramme             ' + pad(state.frame + ' · ' + f.name) + '→ DEFAULT_FRAME i lib/frames.js',
+    '   Slør bag reklamen ' + pad(state.blur ? 'tændt' : 'SLUKKET') + '→ .vad-backdrop i globals.css',
+    '   Købe-lyd          ' + pad(spend.name + ' (spendStyle: ' + spend.id + ')') + '→ AdCoinCounter.js',
+    '   Pris pr. køb      ' + pad(state.price + ' mønter') + '→ app-side, ikke besluttet endnu',
+    '',
+    '   ── Sammenhængen tallene blev målt i ──',
+    '',
+    '   Telefon   ' + d.name + ', ' + d.w + '×' + d.h +
+      (state.safe ? ', sikker zone ' + d.top + '/' + d.bottom : ', uden sikker zone'),
+    '   Vindue    ' + m.w + ' × ' + Math.round(m.h) + ' px = ' + m.ratio.toFixed(3) +
+      (good ? '  ✓ 9:16' : '  ✗ IKKE 9:16 — reklamer i højformat beskæres'),
+    '   Sækken    rører ' + (hits.length ? hits.join(', ') : 'intet'),
+    '   Reklame   stand-in i ' + state.aspect + (state.aspect === 'mix' ? '' : '-format'),
+    '*/',
   ]).join('\n');
 }
 
@@ -1523,7 +1558,7 @@ $('#copyCss').addEventListener('click', async () => {
   } catch (e) {
     btn.textContent = 'Markér selv i feltet';
   }
-  setTimeout(() => { btn.textContent = 'Kopiér CSS'; }, 1600);
+  setTimeout(() => { btn.textContent = 'Kopiér alle indstillinger'; }, 1600);
 });
 
 $('#resetAll').addEventListener('click', () => {

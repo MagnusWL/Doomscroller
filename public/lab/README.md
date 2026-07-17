@@ -120,8 +120,33 @@ env(safe-area-inset-bottom)  →  var(--safe-bottom)
 ```
 
 De findes kun fordi telefonen her er en kasse på en side og ikke et
-browservindue. Geometrien er den samme, så knappen **Kopiér CSS** giver et
-`:root`-blok der kan sættes direkte ind i `globals.css`.
+browservindue. Geometrien er den samme.
+
+Knappen **Kopiér alle indstillinger** giver hele lab'ets tilstand, ikke bare
+CSS'en — for ikke alt hvad man beslutter herinde er en CSS-variabel. Rammen står
+i JavaScript, ka-ching'en er et tal i sækkens opsætning, og sløret er et helt
+lag. De står som kommentarer med adressen på, så hele blokken stadig kan sættes
+direkte ind i `globals.css` uden at gå i stykker:
+
+```css
+/* ── Ikke CSS. Hvad de hedder, og hvor de bor: ──────────────────────
+
+   Ramme             11c · Glas           → DEFAULT_FRAME i lib/frames.js
+   Slør bag reklamen tændt                → .vad-backdrop i globals.css
+   Købe-lyd          A (spendStyle: 1)    → AdCoinCounter.js
+   Pris pr. køb      5 mønter             → app-side, ikke besluttet endnu
+
+   ── Sammenhængen tallene blev målt i ──
+
+   Telefon   iPhone 12–14, 390×844, sikker zone 47/34
+   Vindue    326 × 579 px = 0.563  ✓ 9:16
+   Sækken    rører lydknappen, den sikre zone forneden
+   Reklame   stand-in i 9:16-format
+*/
+```
+
+Telefonen og reklameformatet er ikke indstillinger, men målene afhænger af dem
+— derfor står de nederst, så tallene kan læses i den sammenhæng de blev til i.
 
 ## Sækkens plads
 
@@ -152,6 +177,27 @@ størrelse. Ved 32/40 på en iPhone 12 lander vinduet på 326×579 = **0.563**, 
 9:16 er 0.5625. Derfor møder reklamer i højformat rammen uden at blive beskåret.
 Flytter du den ene variabel alene, skrider forholdet, og så begynder rammen at
 koste billede. Panelet siger til.
+
+**Men 9:16 gælder kun på iPhone.** Målene er faste pixels, og skærmene er det
+ikke — så forholdet flytter sig med telefonen. Med de samme 32/40:
+
+| Telefon | Vindue | Forhold | |
+|---|---|---|---|
+| iPhone 12–14 | 326 × 579 | 0.563 | ✓ |
+| 15 Pro Max | 366 × 655 | 0.559 | ✓ |
+| Pixel 7 | 348 × 683 | **0.510** | ✗ for højt |
+| iPhone SE | 311 × 463 | **0.672** | ✗ for firkantet |
+
+De to iPhones passer fordi deres notch og hjemmestreg tilfældigvis æder det
+rigtige. Pixel'en har en mindre sikker zone, SE'en har ingen og en kort skærm.
+Kommentaren i `globals.css` siger "0.563 … 9:16 to within a tenth of a percent"
+uden at nævne hvilken telefon — det er en uskrevet antagelse, ikke en egenskab
+ved rammen.
+
+En ramme der holder 9:16 overalt kræver at `--frame-y` regnes ud af skærmen
+frem for at stå fast. På en SE bliver det tal negativt, så dér kan man ikke få
+både 9:16, 32px sider og 52px bjælker. Noget skal give. Det er en beslutning,
+ikke en fejl — skift telefon i panelet og se selv.
 
 **Hvad sækken lægger sig oven i.** Panelet måler sækkens kasse mod Ad-mærket,
 lydknappen, Skip-knappen, "Køb reklamen", topbjælkens knapper, de sikre zoner og
