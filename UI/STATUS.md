@@ -1,26 +1,40 @@
 # Hvor vi slap — 17. juli
 
-## Det åbne spørgsmål: Vercel bygger ikke
+## Det lukkede spørgsmål: Vercel byggede hele tiden
 
-**Der blev aldrig oprettet en deployment** for nogen af de to commits:
+**Der var aldrig noget galt.** Den her note påstod hele 17. juli at Vercel var
+holdt op med at bygge `feature/nia-dev`. Det var forkert, og fejlen var min.
 
-| commit | hvad | deployment |
+Opslaget der "beviste" det spurgte med **korte** SHA'er, og deployments-API'ets
+`?sha=`-filter matcher kun den fulde 40-tegns. En kort SHA giver `[]`, og det
+læses nøjagtig som "aldrig bygget". Med fuld SHA:
+
+| commit | deployment | build |
 |---|---|---|
-| `3ec94ef` | lydkontekst bygges i en gesture | grøn |
-| `c780000` | startskærmen | **findes ikke** |
-| `49eef2b` | ramme-vælgeren | **findes ikke** |
+| `c780000` startskærmen | findes ikke | — |
+| `49eef2b` ramme-vælgeren | findes | **success** |
+| `a28092c` alt fra i dag | findes | **success** |
 
-Det er ikke et build der fejlede — et fejlet build ville stå der som rødt. Der
-står ingenting.
+At `c780000` mangler er heller ikke en fejl: **Vercel bygger kun toppen af et
+push**, ikke hver commit undervejs. `c780000` var aldrig en top.
 
-Og det er ikke pushet: `git log origin/feature/nia-dev` viser begge commits
-liggende på GitHub, identisk med lokalt. **Fejlen sidder mellem GitHub og
-Vercel.** Koden kan man holde op med at lede i.
+**Sådan gøres det rigtigt:**
 
-Mistanken er nu integrationen selv: Vercel-appen koblet af repoet, projektet sat
-på pause, eller en grænse ramt på kontoen. Alt sammen ting der kun kan ses i
-**Vercel-dashboardet** — Nicolai har adgang, det har Claude ikke. Kig efter om
-`feature/nia-dev` overhovedet dukker op på deployments-listen efter et push.
+```sh
+full=$(git rev-parse <commit>)
+id=$(curl -s -A "Mozilla/5.0" ".../deployments?sha=$full" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+curl -s -A "Mozilla/5.0" ".../deployments/$id/statuses"
+```
+
+Svaret rummer `state` og et `environment_url` — et link til præcis den commit,
+uden om cache og branch-aliaser. Brug det frem for at gætte.
+
+## Det der stadig ikke er forklaret
+
+Nicolai så ikke startskærmen 17. juli om morgenen, selvom `49eef2b` var bygget
+grønt og indeholdt den. Det er stadig ubesvaret — men det er *ikke* Vercel.
+Næste gang: giv ham `environment_url` for den præcise commit i stedet for
+branch-URL'en, så cache og aliaser er ude af ligningen.
 
 ## Det der ikke længere er ukendt
 
