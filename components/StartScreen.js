@@ -10,7 +10,7 @@ export default function StartScreen({ leaving, onSelect }) {
   return (
     <div className={`start-screen${leaving ? ' leaving' : ''}`}>
       <div className="start-header">
-        <h1 className="start-title">Adcsroller</h1>
+        <h1 className="start-title">Adscroller</h1>
         <p className="start-subtitle">How old are you?</p>
       </div>
       <div className="age-grid">
