@@ -198,7 +198,8 @@ html, body {
   opacity: 0.6;
 }
 
-/* Every action lives here now: buy, inventory, autoscroll. */
+/* Every action lives here now: buy, inventory, autoscroll. Tight padding and
+   a small gap so all three fit one row on a phone-width screen. */
 .bottom-actions {
   position: fixed;
   bottom: 0;
@@ -208,47 +209,86 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px);
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 8px calc(env(safe-area-inset-bottom) + 8px);
   background: #fff;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Solid dark pills so the controls still pop against the white bar rather
-   than washing out against it. */
+/* Mobile-game pill buttons: saturated fill, a darker "baked-in" bottom edge
+   for a pressed-plastic look, and a shove down on :active so it reads as
+   tactile rather than flat. */
 .action-btn,
 .autoscroll-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: 4px;
+  padding: 8px 11px;
   border: 0;
   border-radius: 999px;
-  background: #111;
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
+.action-btn:active:not(:disabled),
+.autoscroll-toggle:active {
+  transform: translateY(2px);
+}
+
+.buy-ad-btn {
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+  box-shadow: 0 3px 0 #15803d, 0 4px 8px rgba(22, 163, 74, 0.4);
+}
+.buy-ad-btn:active:not(:disabled) {
+  box-shadow: 0 1px 0 #15803d;
+}
+
+.inventory-btn {
+  background: linear-gradient(180deg, #818cf8, #4f46e5);
+  box-shadow: 0 3px 0 #3730a3, 0 4px 8px rgba(79, 70, 229, 0.4);
+}
+.inventory-btn:active {
+  box-shadow: 0 1px 0 #3730a3;
+}
+
+.autoscroll-btn,
+.autoscroll-toggle {
+  background: linear-gradient(180deg, #fb923c, #ea580c);
+  box-shadow: 0 3px 0 #c2410c, 0 4px 8px rgba(234, 88, 12, 0.4);
+}
+.autoscroll-btn:active:not(:disabled),
+.autoscroll-toggle:active {
+  box-shadow: 0 1px 0 #c2410c;
+}
+
+/* Higher specificity than the colored fills above, so a disabled button
+   always desaturates regardless of which one it is. */
 .action-btn:disabled {
-  background: #e5e5e5;
+  background: #d4d4d4;
+  box-shadow: none;
   color: rgba(0, 0, 0, 0.35);
   cursor: default;
+  transform: none;
 }
+
 .autoscroll-toggle input {
   accent-color: #fff;
   cursor: pointer;
 }
 
+.btn-badge,
 .inv-count {
   min-width: 16px;
-  padding: 0 4px;
+  padding: 1px 5px;
   border-radius: 999px;
-  background: #fff;
-  color: #000;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;

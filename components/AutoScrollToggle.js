@@ -5,12 +5,13 @@ export default function AutoScrollToggle({ unlocked, enabled, onChange, coins, p
     const canAfford = coins >= price;
     return (
       <button
-        className="action-btn"
+        className="action-btn autoscroll-btn"
         onClick={onBuy}
         disabled={!canAfford}
         title={canAfford ? `Buy autoscroll for ${price} coins` : `Need ${price - coins} more coins`}
       >
-        🔁 Buy Autoscroll · {price}🪙
+        🔁 Auto
+        <span className="btn-badge">{price}🪙</span>
       </button>
     );
   }
