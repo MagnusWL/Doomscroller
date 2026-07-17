@@ -376,6 +376,15 @@ html, body {
   object-fit: contain;
 }
 
+/* BrickThumbnail is a plain div, not an intrinsically-sized img/video, so it
+   needs its own explicit frame rather than the max-width/height rule above. */
+.inv-full-fake {
+  width: min(92vw, 480px);
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
 /* Above literally everything, including the bottom bar's absurd z-index, so
    nothing on the page underneath is reachable until an age is picked. */
 .start-screen {

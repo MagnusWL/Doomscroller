@@ -10,6 +10,7 @@ import { useFakeAds } from '@/hooks/useFakeAds';
 import { runVideoSlider } from '@/lib/adcash';
 import { captureActiveAd } from '@/lib/capture';
 import { priceFor, AUTOSCROLL_PRICE } from '@/lib/pricing';
+import { KLODS_DEFAULTS } from '@/lib/klods';
 import AdCoinCounter from '@/components/AdCoinCounter';
 import ScrollHint from '@/components/ScrollHint';
 import VideoAdSlide from '@/components/VideoAdSlide';
@@ -94,8 +95,15 @@ export default function Feed() {
     coins.spend(price);
     setBuying(true);
     try {
-      const ad = await captureActiveAd(feedRef.current);
-      if (ad) inventory.add(ad);
+      if (isFake(slideId)) {
+        // Nothing to screenshot here — it's a live CSS scene, not a <video> —
+        // but it's also fully deterministic, so the config alone is enough
+        // for the inventory to replay a shot of it later.
+        inventory.add({ kind: 'fake', config: KLODS_DEFAULTS });
+      } else {
+        const ad = await captureActiveAd(feedRef.current);
+        if (ad) inventory.add(ad);
+      }
     } finally {
       setBuying(false);
     }
@@ -121,7 +129,14 @@ export default function Feed() {
         {slides.map(id => (
           <section key={id} className="slide" data-index={id} ref={observeSlide}>
             {isFake(id) ? (
-              <FakeAdSlide feedRef={feedRef} />
+              <FakeAdSlide
+                feedRef={feedRef}
+                slideId={id}
+                onFilled={() => markFilled(id)}
+                coins={coins.coins}
+                onBuyAd={handleBuyAdWithPrice}
+                buying={buying}
+              />
             ) : (
               <VideoAdSlide
                 feedRef={feedRef}

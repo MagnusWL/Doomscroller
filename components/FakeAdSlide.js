@@ -6,6 +6,8 @@ import {
   THEMES, TONES, WORN, WORN_SZ, SPECS, SCENES, TOTAL_DUR, sceneAt,
   STAGE_W, STAGE_H, KLODS_DEFAULTS,
 } from '@/lib/klods';
+import { priceFor } from '@/lib/pricing';
+import AdPriceButton from '@/components/AdPriceButton';
 
 // Loaded in app/layout.js via next/font, which self-hosts them.
 const FSANS = 'var(--font-archivo), system-ui, sans-serif';
@@ -58,6 +60,22 @@ function Brick3D({ rotX = -17, rotY = 30, scale = 1, lift = 0, glow = 1, glowCol
           background: `linear-gradient(200deg, ${hexA(glowColor, 0.22 * glow)} 0%, transparent 42%)`,
         }} />
       </div>
+    </div>
+  );
+}
+
+// A static shot of the brick alone, for the inventory: replaying the full
+// six-scene story in a grid cell (or even the fullscreen viewer) is a lot of
+// motion for "here's the ad you bought" to earn. Needs its own ConfigCtx
+// provider since Brick3D isn't otherwise usable outside FakeAdSlide's tree.
+export function BrickThumbnail({ config }) {
+  const cfg = { ...KLODS_DEFAULTS, ...config };
+  const pal = THEMES[cfg.theme] || THEMES.Light;
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: pal.bg }}>
+      <ConfigCtx.Provider value={{ ...cfg, pal }}>
+        <Brick3D glowColor={cfg.spotlight} tone={cfg.brickTone} />
+      </ConfigCtx.Provider>
     </div>
   );
 }
@@ -324,7 +342,7 @@ function Price({ progress: p, localTime: lt }) {
 const SCENE_COMPONENTS = { Open, Reveal, Name, Specs, Tagline, Price };
 
 // ── the slide ──────────────────────────────────────────────────────────────
-export default function FakeAdSlide({ feedRef, config }) {
+export default function FakeAdSlide({ feedRef, config, slideId, onFilled, coins, onBuyAd, buying }) {
   const rootRef = useRef(null);
   const stageRef = useRef(null);
   const [scale, setScale] = useState(0);
@@ -333,6 +351,16 @@ export default function FakeAdSlide({ feedRef, config }) {
 
   const cfg = { ...KLODS_DEFAULTS, ...config };
   const pal = THEMES[cfg.theme] || THEMES.Light;
+  const price = priceFor(slideId);
+
+  // Unlike a video ad this needs no async fetch — the whole thing renders on
+  // the spot — so it's "loaded" the instant it mounts. Runs once; there's
+  // nothing here that ever changes what counts as filled.
+  const onFilledRef = useRef(onFilled);
+  onFilledRef.current = onFilled;
+  useEffect(() => {
+    onFilledRef.current?.();
+  }, []);
 
   // The piece is authored at a fixed 1080×1920 and stays 9:16 everywhere, like
   // a Short: fit it to the slide and let the feed fill the sides.
@@ -396,6 +424,16 @@ export default function FakeAdSlide({ feedRef, config }) {
           <Scene progress={progress} localTime={localTime} />
         </ConfigCtx.Provider>
       </div>
+      <AdPriceButton
+        slideId={slideId}
+        price={price}
+        coins={coins}
+        onBuy={e => {
+          e.stopPropagation();
+          onBuyAd(slideId, price);
+        }}
+        disabled={buying}
+      />
     </div>
   );
 }
