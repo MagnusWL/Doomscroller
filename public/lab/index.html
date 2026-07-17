@@ -225,8 +225,8 @@ pre .k { color: #f5be3c; }
   --frame-x: 32px;
   --frame-y: 40px;
 
-  --sack-w: 62px;
-  --sack-h: 90px;
+  --sack-w: 64px;
+  --sack-h: 113px;
 
   /* Sækken hænger i et hjørne af reklamevinduet og skubbes derfra, så den
      følger med når rammen ændrer sig. 0,0 flugter med hjørnet: foden på
@@ -234,10 +234,15 @@ pre .k { color: #f5be3c; }
      reklamen, negative ud i rammen.
 
      --sack-h står i formlerne nedenfor, ikke her, og det er med vilje: så
-     bliver foden stående hvor den er når sækken vokser — den vokser opad i
-     stedet for at synke ned i reklamen. */
-  --sack-x: 0px;
-  --sack-y: 0px;
+     bliver hovedet stående hvor det er når sækken vokser — den vokser nedad i
+     stedet for at kravle op i reklamen. */
+  --sack-x: -3px;
+  --sack-y: 5px;
+
+  /* Hvilket hjørne. Findes kun her: appen har én fast .coin-sack-regel for det
+     hjørne der blev valgt, mens lab'et har alle fire at vælge imellem. Skal
+     følge den regel i globals.css. */
+  --sack-anchor: bl;
 
   /* Hvad et tema sætter. Værdierne er 14b's, som er DEFAULT_FRAME. */
   --screen-bg: #100d07;
@@ -788,13 +793,29 @@ const ASPECTS = [
   { id: 'mix',   name: 'Bland', w: 0, h: 0 },
 ];
 
-// Startværdierne er dem der står i globals.css lige nu. tl med 0,0 er præcis
-// den plads sækken har i appen i dag.
-const DEFAULTS = {
-  '--bar-h': 52, '--frame-x': 32, '--frame-y': 40,
-  '--sack-w': 62, '--sack-h': 90, '--sack-x': 0, '--sack-y': 0,
-};
-const DEFAULT_ANCHOR = 'tl';
+/* Startværdierne læses ud af CSS'en frem for at stå skrevet af her. Afsnit 2 er
+   kopien af globals.css, så det her er per definition det appen har — og kan
+   ikke skride fra den.
+
+   Det kunne det før, og gjorde det: appen fik nye tal for sækken, lab'ets egen
+   liste beholdt de gamle, og så loadede lab'et hver gang med sækken et helt
+   andet sted end appen havde den. Kommentaren her påstod endda at de var ens.
+   En liste der påstår at være en kopi skal læse originalen, ikke gengive den. */
+const DEFAULTS = (() => {
+  const cs = getComputedStyle(phone);
+  const px = k => parseFloat(cs.getPropertyValue(k));
+  return {
+    '--bar-h': px('--bar-h'),
+    '--frame-x': px('--frame-x'),
+    '--frame-y': px('--frame-y'),
+    '--sack-w': px('--sack-w'),
+    '--sack-h': px('--sack-h'),
+    '--sack-x': px('--sack-x'),
+    '--sack-y': px('--sack-y'),
+  };
+})();
+
+const DEFAULT_ANCHOR = getComputedStyle(phone).getPropertyValue('--sack-anchor').trim();
 
 const ANCHORS = [
   { id: 'tl', name: '↖ Øverst tv.' },
