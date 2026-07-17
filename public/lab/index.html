@@ -904,8 +904,12 @@ const SLIDERS = [
   { k: '--frame-y', label: 'Top/bund', min: 0,    max: 120, host: '#sliders' },
   { k: '--sack-w',  label: 'Bredde',   min: 32,   max: 140, host: '#sackSliders', sack: true },
   { k: '--sack-h',  label: 'Højde',    min: 48,   max: 160, host: '#sackSliders', sack: true },
-  { k: '--sack-x',  label: 'Vandret',  min: -170, max: 240, host: '#sackSliders' },
-  { k: '--sack-y',  label: 'Lodret',   min: -170, max: 240, host: '#sackSliders' },
+  // Vidt nok til at det nærmeste hjørne altid kan udtrykke enhver plads på
+  // skærmen — ellers klipper <input type=range> tallet i stilhed, og så står
+  // sækken ét sted mens skyderen påstår et andet. Så snart man rører skyderen,
+  // hopper sækken. Se nearestAnchor() for den anden halvdel af kuren.
+  { k: '--sack-x',  label: 'Vandret',  min: -180, max: 260, host: '#sackSliders' },
+  { k: '--sack-y',  label: 'Lodret',   min: -180, max: 380, host: '#sackSliders' },
 ];
 
 // Ka-ching'en når man køber. Fire nære afarter — handoff'en peger på A.
@@ -1196,6 +1200,17 @@ function setAnchor(a) {
   apply();
 }
 
+/* Det hjørne sækken ligger nærmest. Når man slipper efter et træk, flytter den
+   dertil: pladsen er præcis den samme — setAnchor holder den i ro — men tallene
+   bliver små igen. Det er hvad der holder skyderne ærlige, for et langt træk
+   ville ellers efterlade et tal ingen skyder kan vise. */
+function nearestAnchor() {
+  const m = measurements(), p = sackAbs(), v = state.vars;
+  const cx = p.left + v['--sack-w'] / 2;
+  const cy = p.top + v['--sack-h'] / 2;
+  return (cy < m.wt + m.h / 2 ? 't' : 'b') + (cx < m.wl + m.w / 2 ? 'l' : 'r');
+}
+
 /* Hvad sækken lægger sig oven i. Målt på de rigtige kasser frem for regnet ud
    af tal, så den også fanger det jeg ikke har tænkt på. Slidesene ligger
    stablet, så kun den fremme er i nærheden — resten er langt over eller under. */
@@ -1457,7 +1472,13 @@ $('#blurToggle').addEventListener('change', e => { state.blur = e.target.checked
     refreshSliders();
     apply();
   });
-  const stop = () => { from = null; el.classList.remove('dragging'); };
+  const stop = () => {
+    if (!from) return;
+    from = null;
+    el.classList.remove('dragging');
+    // Hjem til nærmeste hjørne. Sækken rører sig ikke — kun tallene skrumper.
+    setAnchor(nearestAnchor());
+  };
   el.addEventListener('pointerup', stop);
   el.addEventListener('pointercancel', stop);
 })();
