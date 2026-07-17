@@ -1,5 +1,14 @@
 import Script from 'next/script';
+import { Archivo, Cormorant_Garamond, Space_Mono } from 'next/font/google';
 import './globals.css';
+
+// The KLODS fake ad's three faces. next/font self-hosts them, so they don't
+// cost a round trip to Google on every view.
+const archivo = Archivo({ subsets: ['latin'], display: 'swap', variable: '--font-archivo' });
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'], weight: ['300'], style: ['italic'], display: 'swap', variable: '--font-cormorant',
+});
+const spaceMono = Space_Mono({ subsets: ['latin'], weight: ['400'], display: 'swap', variable: '--font-space-mono' });
 
 export const metadata = {
   title: 'Doomscroller — Ad Prototype',
@@ -16,7 +25,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${archivo.variable} ${cormorant.variable} ${spaceMono.variable}`}>
       <body>
         <Script
           async
