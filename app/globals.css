@@ -12,19 +12,22 @@
   /* Move and resize the sack with these. The engine reads the canvas box and
      scales both the sack art and the coins to fit it, so the size is only ever
      this — nothing in the component or the engine needs touching. */
-  --sack-w: 62px;
-  --sack-h: 90px;
-  --sack-left: var(--frame-x);
+  --sack-w: 64px;
+  --sack-h: 113px;
 
-  /* Derived, so the sack keeps standing ON the ad rather than in it however it
-     is resized: its foot lands exactly on the window's top edge, and the rest
-     hangs up over the bar — which is empty on the left, since the total moved
-     out of it.
-     There's a ceiling: it can only climb as far as the bar is tall, so a sack
-     over --frame-y + --bar-h (92px here) reaches into the notch. At 90 it has
-     2px to spare. Growing it past that means growing --frame-y — and --frame-x
-     has to follow, or the window stops matching 9:16. */
-  --sack-top: calc(var(--frame-y) - var(--sack-h));
+  /* Where the sack hangs off the ad window's bottom left corner, and how far it
+     is pushed from it. 0,0 would sit flush with that corner — head on the
+     window's bottom edge, left edge on the window's. Positive pushes in over
+     the ad, negative out into the frame.
+
+     --sack-h is in the rule further down rather than here, and deliberately:
+     that way the head stays put as the sack grows and the body hangs further
+     down, instead of the whole thing climbing up into the ad.
+
+     These numbers were found in public/lab/ — see its README for the model and
+     the other three corners. */
+  --sack-x: -3px;
+  --sack-y: 5px;
 }
 
 /* What a theme sets, and what the three [data-frame] blocks further down move.
@@ -273,11 +276,13 @@ html, body {
 
 /* Left edge flush with the ad window's, per the handoff; foot resting on its
    top edge, so it stands on the ad rather than in it. */
+/* Bottom left: the head just inside the ad's lower edge, the body hanging down
+   over the bottom bar. */
 .coin-sack {
   position: fixed;
   z-index: 12;
-  top: calc(env(safe-area-inset-top) + var(--bar-h) + var(--sack-top));
-  left: var(--sack-left);
+  bottom: calc(env(safe-area-inset-bottom) + var(--bar-h) + var(--frame-y) + var(--sack-y) - var(--sack-h));
+  left: calc(var(--frame-x) + var(--sack-x));
   display: flex;
   align-items: flex-end;
   gap: 8px;
