@@ -9,7 +9,7 @@ import { useAdCoins } from '@/hooks/useAdCoins';
 import { useFakeAds } from '@/hooks/useFakeAds';
 import { runVideoSlider } from '@/lib/adcash';
 import { captureActiveAd } from '@/lib/capture';
-import { priceFor } from '@/lib/pricing';
+import { priceFor, AUTOSCROLL_PRICE } from '@/lib/pricing';
 import AdCoinCounter from '@/components/AdCoinCounter';
 import ScrollHint from '@/components/ScrollHint';
 import VideoAdSlide from '@/components/VideoAdSlide';
@@ -23,6 +23,7 @@ export default function Feed() {
   const feedRef = useRef(null);
   const [hintVisible, setHintVisible] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
+  const [autoScrollUnlocked, setAutoScrollUnlocked] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [buying, setBuying] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
@@ -99,6 +100,13 @@ export default function Feed() {
   // There's nothing to capture until the ad for this slide has arrived.
   const buyable = filled.has(slides[activeIndex]);
 
+  const handleBuyAutoscroll = () => {
+    if (coins.coins < AUTOSCROLL_PRICE) return;
+    coins.spend(AUTOSCROLL_PRICE);
+    setAutoScrollUnlocked(true);
+    setAutoScroll(true); // switch it on immediately — that's what was just bought
+  };
+
   return (
     <>
       <div id="feed" ref={feedRef} onScroll={handleFeedScroll}>
@@ -128,7 +136,14 @@ export default function Feed() {
       <div className="bottom-actions">
         <BuyAdButton disabled={!buyable} busy={buying} onClick={handleBuyAd} />
         <InventoryButton count={inventory.count} onClick={() => setInventoryOpen(true)} />
-        <AutoScrollToggle enabled={autoScroll} onChange={setAutoScroll} />
+        <AutoScrollToggle
+          unlocked={autoScrollUnlocked}
+          enabled={autoScroll}
+          onChange={setAutoScroll}
+          coins={coins.coins}
+          price={AUTOSCROLL_PRICE}
+          onBuy={handleBuyAutoscroll}
+        />
       </div>
 
       <InventoryOverlay

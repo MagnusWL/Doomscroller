@@ -186,15 +186,16 @@ html, body {
   justify-content: center;
   gap: 8px;
   padding: 14px 20px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  font-size: 16px;
-  font-weight: 600;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  font-size: 17px;
+  font-weight: 700;
+  color: #111;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 .coin-counter .label {
-  opacity: 0.85;
+  opacity: 0.6;
 }
 
 /* Every action lives here now: buy, inventory, autoscroll. */
@@ -209,12 +210,12 @@ html, body {
   justify-content: center;
   gap: 8px;
   padding: 14px 16px calc(env(safe-area-inset-bottom) + 14px);
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(10px);
+  background: #fff;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* The bar already carries the dark backing, so the controls on it lift off
-   that rather than stacking another layer of black. */
+/* Solid dark pills so the controls still pop against the white bar rather
+   than washing out against it. */
 .action-btn,
 .autoscroll-toggle {
   display: flex;
@@ -223,17 +224,18 @@ html, body {
   padding: 10px 16px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
+  background: #111;
   color: #fff;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 .action-btn:disabled {
-  color: rgba(255, 255, 255, 0.4);
+  background: #e5e5e5;
+  color: rgba(0, 0, 0, 0.35);
   cursor: default;
 }
 .autoscroll-toggle input {

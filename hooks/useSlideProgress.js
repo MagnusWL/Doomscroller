@@ -12,11 +12,19 @@ export function useSlideProgress(feedRef, onAdvance) {
   onAdvanceRef.current = onAdvance;
   const observerRef = useRef(null);
 
+  // React attaches every ref in the initial render's tree — all 8 starting
+  // slides — before this effect ever runs, so their ref callbacks fire while
+  // observerRef.current is still null. Track them here and observe them once
+  // the observer exists, or the entire opening batch silently never earns a
+  // coin and only slides appended later (once useInfiniteSlides' batches
+  // start arriving after the effect has run) do.
+  const pendingRef = useRef(new Set());
+
   useEffect(() => {
     const feed = feedRef.current;
     if (!feed) return;
 
-    observerRef.current = new IntersectionObserver(entries => {
+    const observer = new IntersectionObserver(entries => {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         const idx = Number(entry.target.dataset.index);
@@ -27,10 +35,18 @@ export function useSlideProgress(feedRef, onAdvance) {
       }
     }, { root: feed, threshold: 0.6 });
 
-    return () => observerRef.current.disconnect();
+    observerRef.current = observer;
+    pendingRef.current.forEach(el => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
   }, [feedRef]);
 
   return useCallback(el => {
-    if (el && observerRef.current) observerRef.current.observe(el);
+    if (!el) return;
+    pendingRef.current.add(el);
+    if (observerRef.current) observerRef.current.observe(el);
   }, []);
 }
