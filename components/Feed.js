@@ -18,9 +18,16 @@ import AutoScrollToggle from '@/components/AutoScrollToggle';
 import BuyAdButton from '@/components/BuyAdButton';
 import InventoryButton from '@/components/InventoryButton';
 import InventoryOverlay from '@/components/InventoryOverlay';
+import StartScreen from '@/components/StartScreen';
+
+// How long the start screen's slide-away transition runs — must match the
+// CSS transition duration on .start-screen, or the unmount either cuts the
+// animation short or leaves a blank beat after it finishes.
+const START_TRANSITION_MS = 620;
 
 export default function Feed() {
   const feedRef = useRef(null);
+  const [startState, setStartState] = useState('start'); // 'start' | 'leaving' | 'playing'
   const [hintVisible, setHintVisible] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
   const [autoScrollUnlocked, setAutoScrollUnlocked] = useState(false);
@@ -62,6 +69,13 @@ export default function Feed() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  // The age itself doesn't change anything yet — only picking one does, by
+  // dismissing the start screen and revealing slide 1 underneath.
+  const handleSelectAge = () => {
+    setStartState('leaving');
+    setTimeout(() => setStartState('playing'), START_TRANSITION_MS);
+  };
 
   const handleSkip = () => {
     feedRef.current.scrollBy({ top: feedRef.current.clientHeight, behavior: 'smooth' });
@@ -151,6 +165,10 @@ export default function Feed() {
         items={inventory.items}
         onClose={() => setInventoryOpen(false)}
       />
+
+      {startState !== 'playing' && (
+        <StartScreen leaving={startState === 'leaving'} onSelect={handleSelectAge} />
+      )}
     </>
   );
 }

@@ -375,3 +375,85 @@ html, body {
   max-height: 100%;
   object-fit: contain;
 }
+
+/* Above literally everything, including the bottom bar's absurd z-index, so
+   nothing on the page underneath is reachable until an age is picked. */
+.start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 999999999999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 24px;
+  background: #0b0b0f;
+  color: #fff;
+  text-align: center;
+  transform: translateY(0);
+  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+/* Slides off in the same direction as the feed itself scrolls, so dismissing
+   this reads as "the first scroll" rather than a splash screen closing. */
+.start-screen.leaving {
+  transform: translateY(-100%);
+}
+
+.start-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.start-title {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f472b6, #60a5fa, #4ade80);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.start-subtitle {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.age-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Same pressed-plastic treatment as the bottom action buttons, colored per
+   age via CSS custom properties instead of six near-duplicate rules. */
+.age-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  border: 0;
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--age-from), var(--age-to));
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3), 0 6px 14px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.age-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.age-icon {
+  font-size: 30px;
+  line-height: 1;
+}
