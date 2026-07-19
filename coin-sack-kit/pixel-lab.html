@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin sack — pixel-lab</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  gap: 34px;
+  padding: 32px 24px 80px;
+  background: #16181b;
+  color: #e9eaec;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage { position: sticky; top: 32px; display: flex; gap: 22px; }
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 26px;
+  border-radius: 16px;
+  background: var(--room, #100d07);
+}
+
+.pane .cap {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #7d858f;
+}
+
+.pane .facts { font-size: 10.5px; color: #6f767f; text-align: center; }
+
+.sack { display: flex; align-items: flex-end; gap: 10px; }
+
+/* Den eneste størrelse der betyder noget: motoren skalerer alt til den her. */
+.sack canvas { width: 150px; height: 265px; display: block; }
+
+.sack .count {
+  margin-bottom: 12px;
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  color: #f5be3c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+.panel { width: 310px; display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+  background: #1e2126;
+  border: 1px solid #2c3138;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.card h2 {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7d858f;
+  margin-bottom: 10px;
+}
+
+.row { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.row:last-child { margin-bottom: 0; }
+.row label { flex: none; width: 84px; font-size: 11px; color: #a8b0b9; }
+.row input[type=range] { flex: 1; min-width: 0; accent-color: #f5be3c; }
+.row .num {
+  flex: none; width: 46px; text-align: right;
+  font-variant-numeric: tabular-nums; font-size: 11px; color: #f5be3c;
+}
+
+.btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.btn {
+  padding: 7px 12px;
+  border: 1px solid #3d444d;
+  border-radius: 8px;
+  background: #262b31;
+  color: #e9eaec;
+  font-size: 11px;
+  cursor: pointer;
+}
+.btn:hover { background: #2e343b; }
+.btn.on { border-color: #f5be3c; background: rgba(245, 190, 60, 0.14); color: #fff; }
+.btn.gold { border-color: #f5be3c; background: rgba(245, 190, 60, 0.16); color: #f5be3c; }
+
+.check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a8b0b9; cursor: pointer; }
+.check input { accent-color: #f5be3c; cursor: pointer; }
+
+.note { margin-top: 9px; font-size: 10.5px; line-height: 1.55; color: #7d858f; }
+
+.ramp { display: flex; height: 22px; border-radius: 5px; overflow: hidden; margin-top: 9px; }
+.ramp i { flex: 1; }
+
+pre {
+  margin-top: 9px; padding: 9px;
+  background: #14161a; border: 1px solid #2c3138; border-radius: 7px;
+  font: 10.5px/1.6 ui-monospace, "SF Mono", Consolas, monospace;
+  color: #9aa3ad; white-space: pre; overflow-x: auto;
+}
+pre .k { color: #f5be3c; }
+
+@media (max-width: 900px) {
+  body { flex-direction: column; align-items: center; }
+  .stage { position: static; flex-wrap: wrap; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="pane" id="paneA">
+    <div class="cap">Som den er nu</div>
+    <div class="sack">
+      <canvas id="sackA" aria-hidden="true"></canvas>
+      <span class="count" id="countA">0</span>
+    </div>
+    <div class="facts" id="factsA">—</div>
+  </div>
+  <div class="pane" id="paneB">
+    <div class="cap">Dit bud</div>
+    <div class="sack">
+      <canvas id="sackB" aria-hidden="true"></canvas>
+      <span class="count" id="countB">0</span>
+    </div>
+    <div class="facts" id="factsB">—</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <h2>Opløsning</h2>
+    <div class="row">
+      <label>Pixelstørrelse</label>
+      <input type="range" id="pixelSize" autocomplete="off" min="1" max="8" step="0.2" value="2.4">
+      <span class="num" id="pixelSizeNum">2.4</span>
+    </div>
+    <div class="note" id="resNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Farver</h2>
+    <div class="row">
+      <label>Antal toner</label>
+      <input type="range" id="tones" autocomplete="off" min="2" max="24" step="1" value="6">
+      <span class="num" id="tonesNum">6</span>
+    </div>
+    <div class="btns" style="margin-top:4px">
+      <button class="btn" data-mode="ramp">Temaets metal</button>
+      <button class="btn" data-mode="luma">Behold kulør</button>
+      <button class="btn" data-mode="off">Rør ikke</button>
+    </div>
+    <div class="ramp" id="rampView"></div>
+    <div class="note" id="colNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Kanter</h2>
+    <label class="check"><input type="checkbox" id="hardAlpha" checked> Hårde kanter (ingen halv-gennemsigtighed)</label>
+    <div class="note">
+      Kunsten har blødt udtonede kanter. Pixel-art har ikke — en pixel er
+      enten der eller ikke.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Farve</h2>
+    <div class="btns" id="themes"></div>
+  </div>
+
+  <div class="card">
+    <h2>Mønter</h2>
+    <div class="btns">
+      <button class="btn gold" data-add="1">+1</button>
+      <button class="btn" data-add="8">+8</button>
+      <button class="btn" data-add="16">Fyld</button>
+      <button class="btn" data-reset>Nulstil</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Når du er tilfreds</h2>
+    <div class="btns">
+      <button class="btn gold" id="copy">Kopiér opskriften</button>
+    </div>
+    <pre id="out"></pre>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="sounds-inline.js"></script>
+<script src="coin-sack-engine.global.js"></script>
+<script>
+(function () {
+'use strict';
+
+const $ = s => document.querySelector(s);
+
+/* Temaernes egne metalpaletter — de samme fem roller som rammen og vignetten
+   bruger. At lægge sækken på dén rampe er hele pointen: mønterne er allerede
+   tegnet på en 5-toners guldrampe, og det er derfor de ser pixelerede ud mens
+   sækken ikke gør. */
+const THEMES = {
+  '14b': { navn: 'Messing', rum: '#100d07',
+           rampe: ['#41381a', '#63552a', '#8f7d42', '#b6a262', '#e4d3a6'] },
+  '14c': { navn: 'Kobber', rum: '#120b08',
+           rampe: ['#4a2619', '#733f2c', '#a5654a', '#c98a6a', '#f0cbb0'] },
+  '14f': { navn: 'Stål', rum: '#0f1113',
+           rampe: ['#2c3036', '#474d54', '#6e747b', '#9aa0a6', '#cfd2d6'] },
+};
+
+const LAG = ['sack-bg', 'sack-bg-b', 'ring-back', 'sack-fg', 'ring-front'];
+
+const state = {
+  tema: '14b',
+  pixelSize: 2.4,
+  toner: 6,
+  mode: 'ramp',
+  hardAlpha: true,
+  coins: 0,
+};
+
+/* ── Billedbehandlingen ──────────────────────────────────────────────────── */
+
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const luma = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+/* Strækker temaets fem ankerfarver ud til n toner, så man kan skrue på
+   antallet uden at forlade metallets egen kulør. */
+function byggRampe(anker, n) {
+  const a = anker.map(hex);
+  const ud = [];
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 0 : (i / (n - 1)) * (a.length - 1);
+    const lo = Math.floor(t), hi = Math.min(a.length - 1, lo + 1), f = t - lo;
+    ud.push([0, 1, 2].map(k => Math.round(a[lo][k] + (a[hi][k] - a[lo][k]) * f)));
+  }
+  return ud;
+}
+
+const rampeCache = {};
+function rampe() {
+  const nøgle = state.tema + ':' + state.toner;
+  if (!rampeCache[nøgle]) rampeCache[nøgle] = byggRampe(THEMES[state.tema].rampe, state.toner);
+  return rampeCache[nøgle];
+}
+
+/* Lægger et blødt skygget billede ned på et fast antal toner. To måder:
+     ramp — find den tone i metallets rampe hvis lyshed ligger tættest på.
+            Giver præcis N farver, og binder sækken til rammens farve.
+     luma — behold pixlens egen kulør, men lås dens lyshed til N trin.
+            Færre farver, men ikke ét fast sæt.
+   Alfa hærdes valgfrit til enten helt eller slet ikke, som pixel-art gør. */
+function behandl(img, mode, toner, hardAlpha) {
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  if (mode === 'off' && !hardAlpha) return { cv, farver: null };
+
+  const d = ctx.getImageData(0, 0, cv.width, cv.height);
+  const p = d.data;
+  const R = mode === 'ramp' ? rampe() : null;
+  const trin = 255 / Math.max(1, toner - 1);
+
+  for (let i = 0; i < p.length; i += 4) {
+    if (hardAlpha) p[i + 3] = p[i + 3] > 128 ? 255 : 0;
+    if (p[i + 3] < 8 || mode === 'off') continue;
+    const l = luma(p[i], p[i + 1], p[i + 2]);
+    if (mode === 'ramp') {
+      // nærmeste tone målt på lyshed — bevarer skyggernes form
+      let bedst = 0, afstand = 1e9;
+      for (let k = 0; k < R.length; k++) {
+        const a = Math.abs(luma(R[k][0], R[k][1], R[k][2]) - l);
+        if (a < afstand) { afstand = a; bedst = k; }
+      }
+      p[i] = R[bedst][0]; p[i + 1] = R[bedst][1]; p[i + 2] = R[bedst][2];
+    } else {
+      const ny = Math.round(l / trin) * trin;
+      const f = l > 1 ? ny / l : 1;
+      p[i] = Math.min(255, p[i] * f);
+      p[i + 1] = Math.min(255, p[i + 1] * f);
+      p[i + 2] = Math.min(255, p[i + 2] * f);
+    }
+  }
+  ctx.putImageData(d, 0, 0);
+
+  const sæt = new Set();
+  for (let i = 0; i < p.length; i += 4) if (p[i + 3] > 8) sæt.add((p[i] << 16) | (p[i + 1] << 8) | p[i + 2]);
+  return { cv, farver: sæt.size };
+}
+
+/* ── Kunsten ─────────────────────────────────────────────────────────────── */
+
+const imgCache = {};
+function hent(sti) {
+  if (imgCache[sti]) return imgCache[sti];
+  imgCache[sti] = new Promise((ok, fejl) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = () => fejl(sti);
+    img.src = sti;
+  });
+  return imgCache[sti];
+}
+
+async function art(tema, mode, toner, hardAlpha) {
+  const navne = { 'sack-bg': 'bg', 'sack-bg-b': 'bgB', 'ring-back': 'ringBack', 'sack-fg': 'fg', 'ring-front': 'ringFront' };
+  const ud = { shade: 'assets/shade.png' };   // skyggelaget røres ikke: det er
+  let farver = 0;                             // en blød 30%-overlejring
+  for (const lag of LAG) {
+    const img = await hent('assets/' + tema + '/' + lag + '.png');
+    const r = behandl(img, mode, toner, hardAlpha);
+    ud[navne[lag]] = r.cv.toDataURL('image/png');
+    if (r.farver != null) farver = Math.max(farver, r.farver);
+  }
+  return { art: ud, farver };
+}
+
+/* ── De to sække ─────────────────────────────────────────────────────────── */
+
+function opts(artSæt, pixelSize, canvasId, countId) {
+  return {
+    style: 'artsack',
+    art: artSæt,
+    coinTones: ['#fff6d6', '#ffe08a', '#f5be3c', '#c6871f', '#7e5212'],
+    pixelate: true,
+    pixelSize: pixelSize,
+    fillCount: 16,
+    coinSamples: window.COIN_SAMPLES,
+    flipSample: window.COIN_FLIP,
+    spendStyle: 1,
+    onCount: n => { $(countId).textContent = n.toLocaleString('da-DK'); },
+    soundOn: true,
+    tempo: 0.85, glintStyle: 'star', soundStyle: 'classic',
+    restitution: 0.42, friction: 0.58, gravity: 1.5,
+    bodyScale: 0.72, spin: 0.5, density: 0.006,
+  };
+}
+
+let sackA = null, sackB = null;
+
+async function byg() {
+  const t = THEMES[state.tema];
+  $('#paneA').style.setProperty('--room', t.rum);
+  $('#paneB').style.setProperty('--room', t.rum);
+
+  // Venstre: altid urørt, som referencen.
+  const A = await art(state.tema, 'off', 0, false);
+  // Højre: dine indstillinger.
+  const B = await art(state.tema, state.mode, state.toner, state.hardAlpha);
+
+  if (sackA) try { sackA.destroy(); } catch (e) {}
+  if (sackB) try { sackB.destroy(); } catch (e) {}
+  sackA = new window.CoinSack($('#sackA'), opts(A.art, 2.4, '#sackA', '#countA'));
+  sackB = new window.CoinSack($('#sackB'), opts(B.art, state.pixelSize, '#sackB', '#countB'));
+  for (let i = 0; i < state.coins; i++) { sackA.addCoin(); sackB.addCoin(); }
+
+  const bufA = $('#sackA'), bufB = $('#sackB');
+  $('#factsA').textContent = 'pixelstørrelse 2.4 · ' + bufA.width + '×' + bufA.height + ' buffer · ~400 farver';
+  $('#factsB').textContent = 'pixelstørrelse ' + state.pixelSize + ' · ' + bufB.width + '×' + bufB.height +
+    ' buffer · ' + (B.farver != null ? B.farver + ' farver' : 'farver urørt');
+
+  vis();
+}
+
+/* ── Panelet ─────────────────────────────────────────────────────────────── */
+
+function vis() {
+  const cv = $('#sackB');
+  const css = parseFloat(getComputedStyle(cv).width);
+  $('#resNote').textContent =
+    'Bufferen er ' + cv.width + '×' + cv.height + ', vist i ' + Math.round(css) +
+    ' px — hver bufferpixel fylder ' + (css / cv.width).toFixed(2) +
+    ' skærmpixels. Under 1.0 bliver kunsten skaleret ned, og så går effekten tabt.';
+
+  const R = state.mode === 'ramp' ? rampe() : [];
+  $('#rampView').innerHTML = R.map(c =>
+    '<i style="background:rgb(' + c.join(',') + ')"></i>').join('');
+
+  $('#colNote').textContent = {
+    ramp: 'Hver pixel lægges på nærmeste tone i metallets egen rampe. Giver ' +
+          'præcis ' + state.toner + ' farver, og binder sækken til rammens farve — ' +
+          'som mønterne allerede er bundet til deres guldrampe.',
+    luma: 'Pixlen beholder sin kulør, men lysheden låses til ' + state.toner +
+          ' trin. Mindre voldsomt, men uden ét fast farvesæt.',
+    off: 'Farverne røres ikke — kun opløsningen og kanterne.',
+  }[state.mode];
+
+  document.querySelectorAll('[data-mode]').forEach(b =>
+    b.classList.toggle('on', b.dataset.mode === state.mode));
+  document.querySelectorAll('#themes .btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.theme === state.tema));
+
+  opskrift();
+}
+
+function opskriftTekst() {
+  const t = THEMES[state.tema];
+  const linjer = [
+    '// Coin sack v2 — pixel-lab',
+    '',
+    'pixelSize: ' + state.pixelSize + ',',
+    '',
+  ];
+  if (state.mode === 'off') {
+    linjer.push('// Farverne røres ikke — kunsten bruges som den er.');
+  } else if (state.mode === 'ramp') {
+    linjer.push('// Kunsten lægges på ' + state.toner + ' toner af ' + t.navn + 's rampe:');
+    linjer.push('// ' + rampe().map(c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('')).join(' '));
+  } else {
+    linjer.push('// Kulør beholdt, lyshed låst til ' + state.toner + ' trin.');
+  }
+  linjer.push('// Hårde kanter: ' + (state.hardAlpha ? 'ja' : 'nej'));
+  linjer.push('');
+  linjer.push('// Sådan ser sækken ud ved de her tal på en CSS-bredde af:');
+  for (const w of [64, 96, 150]) {
+    const buf = Math.round(220 / state.pixelSize);
+    const f = w / buf;
+    linjer.push('//   ' + w + ' px  →  ' + f.toFixed(2) + ' skærmpixel per bufferpixel' +
+      (f < 1 ? '   (for lille — effekten går tabt)' : ''));
+  }
+  return linjer.join('\n');
+}
+
+function opskrift() {
+  $('#out').innerHTML = opskriftTekst()
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/(pixelSize|toner)/g, '<span class="k">$1</span>');
+}
+
+/* ── Ledninger ───────────────────────────────────────────────────────────── */
+
+let travl = false, ventende = false;
+async function genbyg() {
+  if (travl) { ventende = true; return; }
+  travl = true;
+  await byg();
+  travl = false;
+  if (ventende) { ventende = false; genbyg(); }
+}
+
+$('#pixelSize').addEventListener('input', e => {
+  state.pixelSize = Number(e.target.value);
+  $('#pixelSizeNum').textContent = state.pixelSize;
+});
+$('#pixelSize').addEventListener('change', genbyg);
+
+$('#tones').addEventListener('input', e => {
+  state.toner = Number(e.target.value);
+  $('#tonesNum').textContent = state.toner;
+  vis();
+});
+$('#tones').addEventListener('change', genbyg);
+
+document.querySelectorAll('[data-mode]').forEach(b =>
+  b.addEventListener('click', () => { state.mode = b.dataset.mode; genbyg(); }));
+
+$('#hardAlpha').addEventListener('change', e => {
+  state.hardAlpha = e.target.checked;
+  genbyg();
+});
+
+for (const id of Object.keys(THEMES)) {
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.dataset.theme = id;
+  b.textContent = THEMES[id].navn;
+  b.addEventListener('click', () => { state.tema = id; genbyg(); });
+  $('#themes').appendChild(b);
+}
+
+document.querySelectorAll('[data-add]').forEach(b =>
+  b.addEventListener('click', () => {
+    const n = Number(b.dataset.add);
+    for (let i = 0; i < n; i++) { state.coins++; sackA.addCoin(); sackB.addCoin(); }
+  }));
+
+$('[data-reset]').addEventListener('click', () => {
+  state.coins = 0;
+  sackA.reset(); sackB.reset();
+});
+
+$('#copy').addEventListener('click', async () => {
+  const b = $('#copy');
+  try { await navigator.clipboard.writeText(opskriftTekst()); b.textContent = 'Kopieret ✓'; }
+  catch (e) { b.textContent = 'Markér selv i feltet'; }
+  setTimeout(() => { b.textContent = 'Kopiér opskriften'; }, 1600);
+});
+
+// Lyden skal have lov, og motoren bygger kun sin kontekst én gang.
+['pointerdown', 'touchend', 'keydown'].forEach(e =>
+  window.addEventListener(e, () => {
+    for (const s of [sackA, sackB]) {
+      if (!s) continue;
+      s._ensureAudio();
+      if (s.audio && s.audio.state !== 'running') s.audio.resume();
+    }
+  }, { passive: true }));
+
+(function vent(n) {
+  if (window.Matter && window.CoinSack) { genbyg(); return; }
+  if (n < 40) setTimeout(() => vent(n + 1), 150);
+})(0);
+
+})();
+</script>
+</body>
+</html>

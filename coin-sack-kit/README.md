@@ -48,9 +48,36 @@ afgør hvor klodset pixel-stilen ser ud:
 | 140 × 250 | 1.52 css-px | tydeligt klodset |
 | 220 × 390 | 2.39 css-px | meget klodset |
 
-Vil du have pixel-looket, så hold dig på **96px bred eller derover**. Under det
-bliver kunsten skaleret ned, og så flimrer den i stedet for at være chunky.
-(Doomscroller kører 64×113 og taber effekten — det er valgt for pladsens skyld.)
+Vil du have pixel-looket, så hold dig på **96px bred eller derover** — eller
+skru `pixelSize` op, som gør det samme fra den anden side. Se `pixel-lab.html`.
+
+## Vil du have den mere pixeleret? Åbn pixel-lab.html
+
+To uafhængige håndtag, og de trækker hver sin vej:
+
+**Opløsning — `pixelSize`.** Det dominerende. Bufferen er `220 / pixelSize` bred,
+uanset CSS-kassen:
+
+| pixelSize | buffer | ved 64 px | ved 96 px | ved 150 px |
+|---|---|---|---|---|
+| 2.4 | 92 | 0.70 ✗ | 1.04 | 1.63 |
+| 3.4 | 65 | 0.98 | 1.48 | 2.31 |
+| **4.4** | **50** | **1.28** | **1.92** | **3.00** |
+| 5.4 | 41 | 1.56 | 2.34 | 3.66 |
+
+Tallene er skærmpixels per bufferpixel. **Under 1.0 skaleres kunsten ned og
+effekten går tabt.**
+
+**Farvedybde.** Kunsten er blødt skygget: `sack-fg.png` har **693 unikke farver**
+på 8.009 synlige pixels — én farve per elleve. Ægte pixel-art har 5–20 i alt.
+Mønterne *er* tegnet som pixel-art, på en fast 5-toners guldrampe, og det er
+netop dét misforhold der får sækken til at se for ren ud ved siden af dem.
+
+Pixel-lab'et lægger kunsten ned på temaets egen 5-toners metalrampe, strakt til
+det antal toner du vælger. Så bliver sækken pixel-art på samme præmis som
+mønterne — og bundet til rammens farve i købet.
+
+Sæk to sække op ved siden af hinanden, skru, og tryk **Kopiér opskriften**.
 
 ## Lyden kræver et klik. Altid.
 
