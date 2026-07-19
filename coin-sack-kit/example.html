@@ -31,9 +31,12 @@ body {
   gap: 10px;
 }
 
+/* 150 er ikke tilfældigt: ved pixelSize 1.6 er bufferen 138 bred, så 150 giver
+   1.09 skærmpixel per bufferpixel — stort set 1:1. Mindre end det, og hele
+   billedet skaleres ned igen. Se README. */
 .sack canvas {
-  width: 96px;
-  height: 170px;
+  width: 150px;
+  height: 265px;
   display: block;
 }
 
@@ -170,17 +173,22 @@ let sack = null;
 function options(id) {
   return {
     style: 'artsack',
+    // Den bagte kunst: 58×58, fem toner af temaets metal, hårde kanter. Den
+    // urørte ligger stadig i assets/<id>/ — se README om at bage igen.
     art: {
-      bg: 'assets/' + id + '/sack-bg.png',
-      bgB: 'assets/' + id + '/sack-bg-b.png',
-      ringBack: 'assets/' + id + '/ring-back.png',
-      fg: 'assets/' + id + '/sack-fg.png',
-      ringFront: 'assets/' + id + '/ring-front.png',
+      bg: 'assets/pixel/' + id + '/sack-bg.png',
+      bgB: 'assets/pixel/' + id + '/sack-bg-b.png',
+      ringBack: 'assets/pixel/' + id + '/ring-back.png',
+      fg: 'assets/pixel/' + id + '/sack-fg.png',
+      ringFront: 'assets/pixel/' + id + '/ring-front.png',
       shade: 'assets/shade.png',
     },
     coinTones: ['#fff6d6', '#ffe08a', '#f5be3c', '#c6871f', '#7e5212'],
     pixelate: true,
-    pixelSize: 2.4,
+    // 1.6 frem for 2.4: en større buffer, så møntklodsen får 4.38 bufferpixels
+    // i stedet for 2.92 og bliver skarpere. Sækkens klodsethed kommer fra
+    // kunstens egne 58 pixels og er uafhængig af det her tal.
+    pixelSize: 1.6,
     fillCount: 16,
 
     // I dit spil: peg på filerne og server dem over http.

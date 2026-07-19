@@ -51,7 +51,49 @@ afgør hvor klodset pixel-stilen ser ud:
 Vil du have pixel-looket, så hold dig på **96px bred eller derover** — eller
 skru `pixelSize` op, som gør det samme fra den anden side. Se `pixel-lab.html`.
 
-## Vil du have den mere pixeleret? Åbn pixel-lab.html
+## Den bagte kunst (det eksemplet bruger)
+
+`assets/pixel/14b|14c|14f/` er kunsten brændt ned til **58×58 pixels og fem
+toner** af hvert temas metal, med hårde kanter. 3–4 farver per lag, ~250–420
+bytes per fil — mod 160 KB for et helt originalt sæt.
+
+Originalerne bliver liggende i `assets/14b|14c|14f/`. De er kilden; bag igen
+derfra hvis du vil have andre tal.
+
+Sammen med den bruger eksemplet **`pixelSize: 1.6`** frem for 2.4. Det er
+modsat af hvad man skulle tro: et lavere tal giver en *større* buffer (138 mod
+92), så møntklodsen får 4,38 bufferpixels i stedet for 2,92 og bliver skarpere.
+Sækkens klodsethed kommer nu fra kunstens egne 58 pixels og er uafhængig af det.
+
+**Det stiller et krav til visningsstørrelsen.** Bufferen er 138 bred, så lærredet
+bør vises omkring 138 px eller derover, ellers skaleres hele billedet ned igen:
+
+| CSS-bredde | skærmpixel per bufferpixel | |
+|---|---|---|
+| 96 px | 0.70 | hele billedet skaleres ned |
+| **150 px** | **1.09** | stort set 1:1 — det eksemplet bruger |
+| 220 px | 1.59 | opskaleret, ekstra klodset |
+
+### Bag igen med andre tal
+
+Kør det her i PowerShell fra `coin-sack-kit`. Ret `$OPL` (klodser) og ramperne:
+
+```powershell
+Add-Type -AssemblyName System.Drawing
+$OPL = 58
+$ramper = @{
+  '14b' = @('#41381a','#63552a','#8f7d42','#b6a262','#e4d3a6')
+  '14c' = @('#4a2619','#733f2c','#a5654a','#c98a6a','#f0cbb0')
+  '14f' = @('#2c3036','#474d54','#6e747b','#9aa0a6','#cfd2d6')
+}
+# … resten står i git-historikken på denne fil (commit "Bake Nicolai's pixel
+# settings into the art"), eller brug pixel-lab.html og bed om en ny bagning.
+```
+
+Pixel-lab'et kvantiserer ved indlæsning i stedet, så du kan skrue frit uden at
+røre nogen filer. Bagningen er kun til når du har besluttet dig.
+
+## Vil du skrue selv? Åbn pixel-lab.html
 
 To sække side om side — venstre urørt, højre din.
 
