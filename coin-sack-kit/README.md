@@ -53,31 +53,35 @@ skru `pixelSize` op, som gør det samme fra den anden side. Se `pixel-lab.html`.
 
 ## Vil du have den mere pixeleret? Åbn pixel-lab.html
 
-To uafhængige håndtag, og de trækker hver sin vej:
+To sække side om side — venstre urørt, højre din.
 
-**Opløsning — `pixelSize`.** Det dominerende. Bufferen er `220 / pixelSize` bred,
-uanset CSS-kassen:
+**Vil du kun ændre sækken, så lad `pixelSize` være.** Den er hele bufferen og
+rammer også mønterne: en møntklods er 7 logiske enheder, altså `7 / pixelSize`
+bufferpixels, så den skrumper fra 2,92 til 1,59 hvis man går fra 2.4 til 4.4.
+Mønterne mister deres form.
 
-| pixelSize | buffer | ved 64 px | ved 96 px | ved 150 px |
-|---|---|---|---|---|
-| 2.4 | 92 | 0.70 ✗ | 1.04 | 1.63 |
-| 3.4 | 65 | 0.98 | 1.48 | 2.31 |
-| **4.4** | **50** | **1.28** | **1.92** | **3.00** |
-| 5.4 | 41 | 1.56 | 2.34 | 3.66 |
+Sækken har sit eget håndtag, og det rører intet andet:
 
-Tallene er skærmpixels per bufferpixel. **Under 1.0 skaleres kunsten ned og
-effekten går tabt.**
+**Sækkens opløsning.** Motoren tegner kunsten i **107 bufferpixels** (384px-filen
+skaleret ned). Sænker man kunstens egen opløsning under det, bliver den klodset
+— og møntklodsen bliver liggende på 2,92. Ved 48 klodser fylder hver klods 2,2
+bufferpixels.
 
-**Farvedybde.** Kunsten er blødt skygget: `sack-fg.png` har **693 unikke farver**
-på 8.009 synlige pixels — én farve per elleve. Ægte pixel-art har 5–20 i alt.
-Mønterne *er* tegnet som pixel-art, på en fast 5-toners guldrampe, og det er
+**Sækkens farver.** Kunsten er blødt skygget: `sack-fg.png` har **693 unikke
+farver** på 8.009 synlige pixels — én farve per elleve. Ægte pixel-art har 5–20 i
+alt. Mønterne *er* tegnet som pixel-art, på en fast 5-toners guldrampe, og det er
 netop dét misforhold der får sækken til at se for ren ud ved siden af dem.
 
-Pixel-lab'et lægger kunsten ned på temaets egen 5-toners metalrampe, strakt til
-det antal toner du vælger. Så bliver sækken pixel-art på samme præmis som
-mønterne — og bundet til rammens farve i købet.
+Lab'et lægger kunsten ned på temaets egen 5-toners metalrampe, strakt til det
+antal toner du vælger. Så bliver sækken pixel-art på samme præmis som mønterne —
+og bundet til rammens farve i købet.
 
-Sæk to sække op ved siden af hinanden, skru, og tryk **Kopiér opskriften**.
+**Sidegevinst, målt:** kvantiseringen gør mønterne *skarpere*. En møntklods er
+2,92 bufferpixels — ikke et helt tal, så kanten udjævnes mod baggrunden. Mod en
+627-farvet blød sæk smører den ud, og ingen af de fem rene guldtoner overlever
+i billedet. Mod en flad 6-farvet sæk overlever alle fem.
+
+Skru, og tryk **Kopiér opskriften**. Den skriver også om `pixelSize` er rørt.
 
 ## Lyden kræver et klik. Altid.
 

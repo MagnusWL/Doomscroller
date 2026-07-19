@@ -140,17 +140,17 @@ pre .k { color: #f5be3c; }
 
 <div class="panel">
   <div class="card">
-    <h2>Opløsning</h2>
+    <h2>Sækkens opløsning</h2>
     <div class="row">
-      <label>Pixelstørrelse</label>
-      <input type="range" id="pixelSize" autocomplete="off" min="1" max="8" step="0.2" value="2.4">
-      <span class="num" id="pixelSizeNum">2.4</span>
+      <label>Klodser</label>
+      <input type="range" id="artRes" autocomplete="off" min="16" max="160" step="2" value="48">
+      <span class="num" id="artResNum">48</span>
     </div>
     <div class="note" id="resNote"></div>
   </div>
 
   <div class="card">
-    <h2>Farver</h2>
+    <h2>Sækkens farver</h2>
     <div class="row">
       <label>Antal toner</label>
       <input type="range" id="tones" autocomplete="off" min="2" max="24" step="1" value="6">
@@ -172,6 +172,16 @@ pre .k { color: #f5be3c; }
       Kunsten har blødt udtonede kanter. Pixel-art har ikke — en pixel er
       enten der eller ikke.
     </div>
+  </div>
+
+  <div class="card">
+    <h2>Hele billedet</h2>
+    <div class="row">
+      <label>Pixelstørrelse</label>
+      <input type="range" id="pixelSize" autocomplete="off" min="1" max="8" step="0.2" value="2.4">
+      <span class="num" id="pixelSizeNum">2.4</span>
+    </div>
+    <div class="note" id="globalNote"></div>
   </div>
 
   <div class="card">
@@ -225,11 +235,18 @@ const LAG = ['sack-bg', 'sack-bg-b', 'ring-back', 'sack-fg', 'ring-front'];
 const state = {
   tema: '14b',
   pixelSize: 2.4,
+  artRes: 48,
   toner: 6,
   mode: 'ramp',
   hardAlpha: true,
   coins: 0,
 };
+
+// Motorens egne tal, målt: kunsten tegnes i 258 logiske enheder ud af 220 brede
+// logiske rum, og en møntklods er 7. Bruges kun til at regne panelets tal ud.
+const ART_LOGISK = 258;
+const LOGISK_BREDDE = 220;
+const MØNT_KLODS = 7;
 
 /* ── Billedbehandlingen ──────────────────────────────────────────────────── */
 
@@ -256,17 +273,32 @@ function rampe() {
   return rampeCache[nøgle];
 }
 
-/* Lægger et blødt skygget billede ned på et fast antal toner. To måder:
+/* Gør kunsten klodset UDEN at røre mønterne.
+
+   Motoren tegner kunsten i 107 bufferpixels (384px-filen squeezet ned), mens en
+   møntklods er 2,92 bufferpixels. De to tal er uafhængige: sænker man kunstens
+   egen opløsning under 107, bliver den klodset, og mønterne mærker ingenting.
+   Det er dét `pixelSize` IKKE kan — den er hele bufferen, så den rammer begge.
+
+   Filen leveres i den lave opløsning, og motoren skalerer den op igen med
+   imageSmoothingEnabled = false. Så ligger klodserne i billedet.
+
+   Derefter lægges den ned på et fast antal toner. To måder:
      ramp — find den tone i metallets rampe hvis lyshed ligger tættest på.
             Giver præcis N farver, og binder sækken til rammens farve.
      luma — behold pixlens egen kulør, men lås dens lyshed til N trin.
             Færre farver, men ikke ét fast sæt.
    Alfa hærdes valgfrit til enten helt eller slet ikke, som pixel-art gør. */
-function behandl(img, mode, toner, hardAlpha) {
+function behandl(img, mode, toner, hardAlpha, opløsning) {
+  const N = img.naturalWidth;
+  // Ned med udjævning: en gennemsnitsfarve per klods rammer bedre end at
+  // udpege én tilfældig kildepixel. Kvantiseringen bagefter gør den hård igen.
+  const ud = opløsning && opløsning < N ? opløsning : N;
   const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  cv.width = ud; cv.height = ud;
   const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(img, 0, 0, ud, ud);
   if (mode === 'off' && !hardAlpha) return { cv, farver: null };
 
   const d = ctx.getImageData(0, 0, cv.width, cv.height);
@@ -315,13 +347,13 @@ function hent(sti) {
   return imgCache[sti];
 }
 
-async function art(tema, mode, toner, hardAlpha) {
+async function art(tema, mode, toner, hardAlpha, opløsning) {
   const navne = { 'sack-bg': 'bg', 'sack-bg-b': 'bgB', 'ring-back': 'ringBack', 'sack-fg': 'fg', 'ring-front': 'ringFront' };
   const ud = { shade: 'assets/shade.png' };   // skyggelaget røres ikke: det er
   let farver = 0;                             // en blød 30%-overlejring
   for (const lag of LAG) {
     const img = await hent('assets/' + tema + '/' + lag + '.png');
-    const r = behandl(img, mode, toner, hardAlpha);
+    const r = behandl(img, mode, toner, hardAlpha, opløsning);
     ud[navne[lag]] = r.cv.toDataURL('image/png');
     if (r.farver != null) farver = Math.max(farver, r.farver);
   }
@@ -357,9 +389,9 @@ async function byg() {
   $('#paneB').style.setProperty('--room', t.rum);
 
   // Venstre: altid urørt, som referencen.
-  const A = await art(state.tema, 'off', 0, false);
+  const A = await art(state.tema, 'off', 0, false, 0);
   // Højre: dine indstillinger.
-  const B = await art(state.tema, state.mode, state.toner, state.hardAlpha);
+  const B = await art(state.tema, state.mode, state.toner, state.hardAlpha, state.artRes);
 
   if (sackA) try { sackA.destroy(); } catch (e) {}
   if (sackB) try { sackB.destroy(); } catch (e) {}
@@ -367,10 +399,10 @@ async function byg() {
   sackB = new window.CoinSack($('#sackB'), opts(B.art, state.pixelSize, '#sackB', '#countB'));
   for (let i = 0; i < state.coins; i++) { sackA.addCoin(); sackB.addCoin(); }
 
-  const bufA = $('#sackA'), bufB = $('#sackB');
-  $('#factsA').textContent = 'pixelstørrelse 2.4 · ' + bufA.width + '×' + bufA.height + ' buffer · ~400 farver';
-  $('#factsB').textContent = 'pixelstørrelse ' + state.pixelSize + ' · ' + bufB.width + '×' + bufB.height +
-    ' buffer · ' + (B.farver != null ? B.farver + ' farver' : 'farver urørt');
+  $('#factsA').textContent = 'kunsten i fuld opløsning · ~400 farver · mønter 2.92 px';
+  $('#factsB').textContent = 'kunsten i ' + state.artRes + ' klodser · ' +
+    (B.farver != null ? B.farver + ' farver' : 'farver urørt') +
+    ' · mønter ' + (MØNT_KLODS / state.pixelSize).toFixed(2) + ' px';
 
   vis();
 }
@@ -379,11 +411,25 @@ async function byg() {
 
 function vis() {
   const cv = $('#sackB');
-  const css = parseFloat(getComputedStyle(cv).width);
-  $('#resNote').textContent =
-    'Bufferen er ' + cv.width + '×' + cv.height + ', vist i ' + Math.round(css) +
-    ' px — hver bufferpixel fylder ' + (css / cv.width).toFixed(2) +
-    ' skærmpixels. Under 1.0 bliver kunsten skaleret ned, og så går effekten tabt.';
+  const bufBredde = cv.width;
+  // Hvor bred kunsten er inde i bufferen — det loft dens egen opløsning skal
+  // under, før klodserne kan ses.
+  const artIBuffer = ART_LOGISK * (bufBredde / LOGISK_BREDDE);
+  const klods = artIBuffer / state.artRes;
+
+  $('#resNote').textContent = klods < 1
+    ? 'Kunsten tegnes i ' + Math.round(artIBuffer) + ' bufferpixels, så ' +
+      state.artRes + ' klodser kan ikke ses — de er mindre end en pixel. Gå ned ' +
+      'under ' + Math.floor(artIBuffer) + '.'
+    : 'Kunsten tegnes i ' + Math.round(artIBuffer) + ' bufferpixels, så hver klods ' +
+      'fylder ' + klods.toFixed(1) + ' af dem. Mønterne rører sig ikke — de er ' +
+      (MØNT_KLODS / state.pixelSize).toFixed(2) + ' bufferpixels uanset hvad der står her.';
+
+  $('#globalNote').textContent =
+    'Det her er hele bufferen, så den rammer OGSÅ mønterne: en møntklods går fra ' +
+    '2.92 til ' + (MØNT_KLODS / state.pixelSize).toFixed(2) + ' bufferpixels. ' +
+    'Vil du kun have sækken klodset, så lad den her stå på 2.4 og brug ' +
+    '“Sækkens opløsning” i stedet.';
 
   const R = state.mode === 'ramp' ? rampe() : [];
   $('#rampView').innerHTML = R.map(c =>
@@ -411,8 +457,8 @@ function opskriftTekst() {
   const linjer = [
     '// Coin sack v2 — pixel-lab',
     '',
-    'pixelSize: ' + state.pixelSize + ',',
-    '',
+    '// Sækken alene:',
+    '//   kunsten skaleres ned til ' + state.artRes + ' klodser',
   ];
   if (state.mode === 'off') {
     linjer.push('// Farverne røres ikke — kunsten bruges som den er.');
@@ -422,15 +468,13 @@ function opskriftTekst() {
   } else {
     linjer.push('// Kulør beholdt, lyshed låst til ' + state.toner + ' trin.');
   }
-  linjer.push('// Hårde kanter: ' + (state.hardAlpha ? 'ja' : 'nej'));
+  linjer.push('//   hårde kanter: ' + (state.hardAlpha ? 'ja' : 'nej'));
   linjer.push('');
-  linjer.push('// Sådan ser sækken ud ved de her tal på en CSS-bredde af:');
-  for (const w of [64, 96, 150]) {
-    const buf = Math.round(220 / state.pixelSize);
-    const f = w / buf;
-    linjer.push('//   ' + w + ' px  →  ' + f.toFixed(2) + ' skærmpixel per bufferpixel' +
-      (f < 1 ? '   (for lille — effekten går tabt)' : ''));
-  }
+  linjer.push('// Mønterne (rørt eller ej):');
+  linjer.push('pixelSize: ' + state.pixelSize + ',   // ' +
+    (state.pixelSize === 2.4
+      ? 'urørt — mønterne er som de var'
+      : 'ÆNDRET — møntklodsen går fra 2.92 til ' + (MØNT_KLODS / state.pixelSize).toFixed(2) + ' px'));
   return linjer.join('\n');
 }
 
@@ -454,8 +498,16 @@ async function genbyg() {
 $('#pixelSize').addEventListener('input', e => {
   state.pixelSize = Number(e.target.value);
   $('#pixelSizeNum').textContent = state.pixelSize;
+  vis();
 });
 $('#pixelSize').addEventListener('change', genbyg);
+
+$('#artRes').addEventListener('input', e => {
+  state.artRes = Number(e.target.value);
+  $('#artResNum').textContent = state.artRes;
+  vis();
+});
+$('#artRes').addEventListener('change', genbyg);
 
 $('#tones').addEventListener('input', e => {
   state.toner = Number(e.target.value);
