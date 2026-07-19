@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coin sack — eksempel</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 40px;
+  padding: 40px 24px;
+  background: #16181b;
+  color: #e9eaec;
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Det eneste der egentlig skal til ────────────────────────────────────────
+   Sækken er ét canvas. Motoren læser dets kasse og skalerer både sækken og
+   mønternes radius til at passe — så størrelsen sættes HER, i CSS, og intet
+   andet skal røres. Tallet ved siden af er dit eget; motoren tegner det ikke.
+   ───────────────────────────────────────────────────────────────────────── */
+.sack {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.sack canvas {
+  width: 96px;
+  height: 170px;
+  display: block;
+}
+
+.sack .count {
+  margin-bottom: 10px;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  color: #f5be3c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Resten er kun kulisse til eksemplet ─────────────────────────────────── */
+.stage {
+  position: sticky;
+  top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 34px;
+  border-radius: 18px;
+  background: var(--room, #100d07);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.hint { font-size: 11px; color: #6f767f; text-align: center; }
+
+.panel { width: 300px; display: flex; flex-direction: column; gap: 14px; }
+
+.card {
+  background: #1e2126;
+  border: 1px solid #2c3138;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.card h2 {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7d858f;
+  margin-bottom: 10px;
+}
+
+.btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.btn {
+  padding: 8px 13px;
+  border: 1px solid #3d444d;
+  border-radius: 8px;
+  background: #262b31;
+  color: #e9eaec;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn:hover { background: #2e343b; }
+.btn.gold { border-color: #f5be3c; background: rgba(245, 190, 60, 0.16); color: #f5be3c; }
+.btn.on { border-color: #f5be3c; background: rgba(245, 190, 60, 0.14); color: #fff; }
+
+.note { margin-top: 10px; font-size: 11px; line-height: 1.55; color: #7d858f; }
+.note.warn { color: #f0824c; }
+
+code {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  color: #f5be3c;
+}
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="sack">
+    <canvas id="sack" aria-hidden="true"></canvas>
+    <span class="count" id="count">0</span>
+  </div>
+  <div class="hint" id="hint">Tryk et sted for at give lyden lov</div>
+</div>
+
+<div class="panel">
+  <div class="card">
+    <h2>Saml mønter op</h2>
+    <div class="btns">
+      <button class="btn gold" data-add="1">+1</button>
+      <button class="btn" data-add="5">+5</button>
+      <button class="btn" data-add="25">+25</button>
+      <button class="btn" data-spend="8">Køb (−8)</button>
+      <button class="btn" data-reset>Nulstil</button>
+    </div>
+    <div class="note" id="state"></div>
+  </div>
+
+  <div class="card">
+    <h2>Farve</h2>
+    <div class="btns" id="themes"></div>
+    <div class="note">
+      Tre tonede sæt i <code>assets/</code>. Mønterne er det samme guld i alle
+      tre — kun sækken skifter.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Lyd</h2>
+    <div class="note" id="audio"></div>
+  </div>
+</div>
+
+<!-- Matter.js skal være indlæst FØR motoren bruges. Her fra et CDN; i dit spil
+     kan det lige så godt være en npm-pakke, så længe den ender som
+     window.Matter. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="sounds-inline.js"></script>
+<script src="coin-sack-engine.global.js"></script>
+<script>
+(function () {
+'use strict';
+
+const $ = s => document.querySelector(s);
+
+// De tre farver. Rummet bag sækken skifter med, så man kan se at den passer.
+const THEMES = [
+  { id: '14b', name: 'Messing', room: '#100d07' },
+  { id: '14c', name: 'Kobber', room: '#120b08' },
+  { id: '14f', name: 'Stål', room: '#0f1113' },
+];
+
+let theme = '14b';
+let coins = 0;
+let sack = null;
+
+/* ═══ DET HER ER HELE INTEGRATIONEN ═══════════════════════════════════════ */
+
+function options(id) {
+  return {
+    style: 'artsack',
+    art: {
+      bg: 'assets/' + id + '/sack-bg.png',
+      bgB: 'assets/' + id + '/sack-bg-b.png',
+      ringBack: 'assets/' + id + '/ring-back.png',
+      fg: 'assets/' + id + '/sack-fg.png',
+      ringFront: 'assets/' + id + '/ring-front.png',
+      shade: 'assets/shade.png',
+    },
+    coinTones: ['#fff6d6', '#ffe08a', '#f5be3c', '#c6871f', '#7e5212'],
+    pixelate: true,
+    pixelSize: 2.4,
+    fillCount: 16,
+
+    // I dit spil: peg på filerne og server dem over http.
+    //   coinSamples: Array.from({length: 14}, (_, i) => 'assets/coin/coin-' + (i+1) + '.wav'),
+    //   flipSample: 'assets/coin-flip.mp3',
+    // Her er de data:-URI'er, så eksemplet også lyder ved dobbeltklik.
+    coinSamples: window.COIN_SAMPLES,
+    flipSample: window.COIN_FLIP,
+    spendStyle: 1,
+
+    // Motoren melder tilbage. Tallet er dit — sækken tegner det ikke selv.
+    onCount: n => { $('#count').textContent = n.toLocaleString('da-DK'); },
+    onFull: () => { flash('Sækken er fuld — konfetti!'); },
+
+    soundOn: true,
+    tempo: 0.85,
+    glintStyle: 'star',
+    soundStyle: 'classic',
+    restitution: 0.42,
+    friction: 0.58,
+    gravity: 1.5,
+    bodyScale: 0.72,
+    spin: 0.5,
+    density: 0.006,
+  };
+}
+
+function build() {
+  if (sack) { try { sack.destroy(); } catch (e) {} }
+  sack = new window.CoinSack($('#sack'), options(theme));
+  // Mønter tjent før den her sæk fandtes hører stadig til i den.
+  for (let i = 0; i < coins; i++) sack.addCoin();
+}
+
+// Kald den her når spilleren samler en mønt op. Det er det hele.
+function pickUp(n) {
+  for (let i = 0; i < n; i++) {
+    coins++;
+    sack.addCoin();
+  }
+  render();
+}
+
+// Og den her når der købes noget. Den returnerer hvor mange den nåede at løfte
+// ud — sækken kan kun vise fillCount ad gangen, så prisen er dit regnestykke,
+// ikke dens.
+function spend(price) {
+  if (coins < price) { flash('Ikke råd — ' + coins + ' af ' + price); return; }
+  coins -= price;
+  sack.spendCoins(price);
+  render();
+}
+
+/* ═══ Resten er kulisse ═══════════════════════════════════════════════════ */
+
+let flashUntil = 0;
+function flash(msg) {
+  $('#state').textContent = msg;
+  flashUntil = performance.now() + 1800;
+}
+
+function render() {
+  $('#count').textContent = coins.toLocaleString('da-DK');
+  if (performance.now() > flashUntil) {
+    const vist = Math.min(coins, 16);
+    $('#state').textContent = coins + ' mønter i alt · sækken viser ' + vist +
+      (coins > 16 ? ' (resten løb over kanten)' : '');
+  }
+  document.querySelectorAll('#themes .btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.theme === theme));
+  $('#stage').style.setProperty('--room', THEMES.find(t => t.id === theme).room);
+}
+
+function audioNote() {
+  const el = $('#audio');
+  if (!sack) { el.textContent = 'Sækken bygges …'; return; }
+  const st = sack.audio ? sack.audio.state : 'ingen';
+  const n = sack._sampleBufs ? sack._sampleBufs.length : 0;
+  const ok = st === 'running';
+  el.className = 'note' + (ok ? '' : ' warn');
+  el.textContent = ok
+    ? 'Kører — ' + n + ' af 14 møntklip afkodet, plus flip-lyden.'
+    : 'Sover (' + st + '). Browseren tillader ikke lyd før siden er rørt — ' +
+      'tryk et sted.';
+  $('#hint').style.visibility = ok ? 'hidden' : 'visible';
+}
+
+// Browseren nægter lyd indtil siden er rørt, og motoren bygger kun sin
+// lydkontekst én gang — ved fødslen, længe før nogen har rørt noget. Så byg den
+// inde i en gestus, og genstart den uanset hvad den selv påstår om sin
+// tilstand. Uden det her er sækken tavs, og intet fortæller dig hvorfor.
+function wake() {
+  if (!sack) return;
+  sack._ensureAudio();
+  if (sack.audio && sack.audio.state !== 'running') sack.audio.resume();
+  audioNote();
+}
+['pointerdown', 'touchend', 'keydown'].forEach(e =>
+  window.addEventListener(e, wake, { passive: true }));
+
+for (const t of THEMES) {
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.dataset.theme = t.id;
+  b.textContent = t.name;
+  b.addEventListener('click', () => { theme = t.id; build(); render(); });
+  $('#themes').appendChild(b);
+}
+
+document.querySelectorAll('[data-add]').forEach(b =>
+  b.addEventListener('click', () => pickUp(Number(b.dataset.add))));
+document.querySelector('[data-spend]')
+  .addEventListener('click', () => spend(8));
+document.querySelector('[data-reset]').addEventListener('click', () => {
+  coins = 0;
+  sack.reset();
+  render();
+});
+
+// Matter kommer fra et CDN, så den kan stadig være undervejs.
+(function wait(n) {
+  if (window.Matter && window.CoinSack) { build(); render(); audioNote(); return; }
+  if (n < 40) { setTimeout(() => wait(n + 1), 150); return; }
+  $('#audio').className = 'note warn';
+  $('#audio').textContent = !window.Matter
+    ? 'Matter.js kom aldrig — er du offline?'
+    : 'coin-sack-engine.global.js kom aldrig igennem.';
+})(0);
+
+setInterval(audioNote, 1000);
+
+})();
+</script>
+</body>
+</html>
