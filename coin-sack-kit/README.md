@@ -147,6 +147,26 @@ det skal være et rigtigt klik, tryk eller tastetryk.
 Vil du se om det virkede: `sack.audio.state === 'running'` og
 `sack._sampleBufs.length === 14`.
 
+## Pixel-lab'ets kunst er inlinet — og det er ikke pynt
+
+`art-inline.js` (2,5 MB) bærer alle 17 kunstfiler som `data:`-URI'er, og
+**kun pixel-lab'et** loader den. Grunden: en almindelig Chrome regner
+`file://`-billeder som fremmede, så et canvas der har tegnet dem bliver
+*tainted* og nægter `getImageData`/`toDataURL` med en SecurityError — præcis de
+to kald kvantiseringen består af. En `data:`-URI tainter ikke, så lab'et virker
+ved dobbeltklik i enhver browser.
+
+(`example.html` behøver den ikke: den læser aldrig pixels tilbage, den tegner
+kun. Og Claude Codes browserrude kører med et flag der skjuler hele problemet —
+derfor virkede lab'et "hos mig" og fejlede hos dig.)
+
+Gendan efter nye kunstfiler — PowerShell, fra `coin-sack-kit`:
+
+```powershell
+# Læser assets/ og skriver art-inline.js. Fuld version i git-historikken
+# (commit "Inline the lab's art so double-click works in a real browser").
+```
+
 ## Lydfilerne hentes med fetch()
 
 Så de skal serveres over **http**. Over `file://` er `fetch()` spærret, og

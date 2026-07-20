@@ -210,6 +210,7 @@ pre .k { color: #f5be3c; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <script src="sounds-inline.js"></script>
+<script src="art-inline.js"></script>
 <script src="coin-sack-engine.global.js"></script>
 <script>
 (function () {
@@ -296,7 +297,7 @@ function rampe() {
    som metallerne fik deres fra handoff'ens tabel. */
 async function derivRampe(t) {
   const fg = t.lag.find(l => l[1] === 'fg');
-  const img = await hent(t.sti + fg[0] + '.png');
+  const img = await hent(kilde(t, fg[0]));
   const cv = document.createElement('canvas');
   cv.width = img.naturalWidth; cv.height = img.naturalHeight;
   const c = cv.getContext('2d');
@@ -393,6 +394,19 @@ function hent(sti) {
   return imgCache[sti];
 }
 
+/* Kunsten hentes som data:-URI når den findes i art-inline.js, ellers som fil.
+   Forskellen er ikke pynt: en almindelig Chrome regner file://-billeder som
+   fremmede, og så nægter canvas at læse pixels tilbage (getImageData og
+   toDataURL kaster SecurityError) — og kvantisering ER at læse pixels. En
+   data:-URI tainter ikke, så lab'et virker ved dobbeltklik. Ruden i Claude
+   Code kører med et flag der skjulte det her; en rigtig browser gør ikke. */
+function kilde(t, fil) {
+  const u = window.ART_URIS;
+  const nøgle = t.sti.replace('assets/', '').replace(/\/$/, '');
+  if (u && u[nøgle] && u[nøgle][fil]) return u[nøgle][fil];
+  return t.sti + fil + '.png';
+}
+
 async function art(tema, mode, toner, hardAlpha, opløsning) {
   const t = THEMES[tema];
   const ud = {};
@@ -400,7 +414,7 @@ async function art(tema, mode, toner, hardAlpha, opløsning) {
   if (t.shade) ud.shade = t.shade;
   let farver = 0;
   for (const [fil, nøgle] of t.lag) {
-    const img = await hent(t.sti + fil + '.png');
+    const img = await hent(kilde(t, fil));
     const r = behandl(img, mode, toner, hardAlpha, opløsning);
     ud[nøgle] = r.cv.toDataURL('image/png');
     if (r.farver != null) farver = Math.max(farver, r.farver);
