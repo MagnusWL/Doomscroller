@@ -194,7 +194,7 @@ pre .k { color: #f5be3c; }
     <div class="btns">
       <button class="btn gold" data-add="1">+1</button>
       <button class="btn" data-add="8">+8</button>
-      <button class="btn" data-add="16">Fyld</button>
+      <button class="btn" data-fill>Fyld</button>
       <button class="btn" data-reset>Nulstil</button>
     </div>
   </div>
@@ -217,20 +217,35 @@ pre .k { color: #f5be3c; }
 
 const $ = s => document.querySelector(s);
 
-/* Temaernes egne metalpaletter — de samme fem roller som rammen og vignetten
-   bruger. At lægge sækken på dén rampe er hele pointen: mønterne er allerede
-   tegnet på en 5-toners guldrampe, og det er derfor de ser pixelerede ud mens
-   sækken ikke gør. */
-const THEMES = {
-  '14b': { navn: 'Messing', rum: '#100d07',
-           rampe: ['#41381a', '#63552a', '#8f7d42', '#b6a262', '#e4d3a6'] },
-  '14c': { navn: 'Kobber', rum: '#120b08',
-           rampe: ['#4a2619', '#733f2c', '#a5654a', '#c98a6a', '#f0cbb0'] },
-  '14f': { navn: 'Stål', rum: '#0f1113',
-           rampe: ['#2c3036', '#474d54', '#6e747b', '#9aa0a6', '#cfd2d6'] },
-};
+/* Motiverne. De tre sække har temaernes egne metalpaletter — de samme fem
+   roller som rammen og vignetten bruger. At lægge sækken på dén rampe er hele
+   pointen: mønterne er allerede tegnet på en 5-toners guldrampe, og det er
+   derfor de ser pixelerede ud mens sækken ikke gør.
 
-const LAG = ['sack-bg', 'sack-bg-b', 'ring-back', 'sack-fg', 'ring-front'];
+   Kraniet har ingen ramme at matche, så dets rampe er null og udledes af dets
+   egen kunst første gang det bygges — fem toner fra knoglemørkt til lysest.
+
+   lag = [filnavn, motorens nøgle]. box = den kasse motivet er designet i;
+   kraniet står i liggende 560×380 med luft til at mønter vælter ud ved siden
+   af. geometry vælger det indre rum i motoren. */
+const THEMES = {
+  '14b': { navn: 'Messing', rum: '#100d07', sti: 'assets/14b/', geometry: 'sack',
+           box: [150, 265], fillCount: 16, shade: 'assets/shade.png',
+           lag: [['sack-bg', 'bg'], ['sack-bg-b', 'bgB'], ['ring-back', 'ringBack'], ['sack-fg', 'fg'], ['ring-front', 'ringFront']],
+           rampe: ['#41381a', '#63552a', '#8f7d42', '#b6a262', '#e4d3a6'] },
+  '14c': { navn: 'Kobber', rum: '#120b08', sti: 'assets/14c/', geometry: 'sack',
+           box: [150, 265], fillCount: 16, shade: 'assets/shade.png',
+           lag: [['sack-bg', 'bg'], ['sack-bg-b', 'bgB'], ['ring-back', 'ringBack'], ['sack-fg', 'fg'], ['ring-front', 'ringFront']],
+           rampe: ['#4a2619', '#733f2c', '#a5654a', '#c98a6a', '#f0cbb0'] },
+  '14f': { navn: 'Stål', rum: '#0f1113', sti: 'assets/14f/', geometry: 'sack',
+           box: [150, 265], fillCount: 16, shade: 'assets/shade.png',
+           lag: [['sack-bg', 'bg'], ['sack-bg-b', 'bgB'], ['ring-back', 'ringBack'], ['sack-fg', 'fg'], ['ring-front', 'ringFront']],
+           rampe: ['#2c3036', '#474d54', '#6e747b', '#9aa0a6', '#cfd2d6'] },
+  'skull': { navn: 'Kranie', rum: '#16110a', sti: 'assets/skull/', geometry: 'skull',
+           box: [560, 380], fillCount: 30, shade: null,
+           lag: [['back', 'bg'], ['skull', 'fg']],
+           rampe: null },
+};
 
 const state = {
   tema: '14b',
@@ -268,9 +283,40 @@ function byggRampe(anker, n) {
 
 const rampeCache = {};
 function rampe() {
+  const anker = THEMES[state.tema].rampe;
+  if (!anker) return [];   // kraniets rampe findes først når det er bygget
   const nøgle = state.tema + ':' + state.toner;
-  if (!rampeCache[nøgle]) rampeCache[nøgle] = byggRampe(THEMES[state.tema].rampe, state.toner);
+  if (!rampeCache[nøgle]) rampeCache[nøgle] = byggRampe(anker, state.toner);
   return rampeCache[nøgle];
+}
+
+/* Udleder fem ankerfarver af motivets egen forgrund: de synlige pixels deles i
+   fem lige store lysheds-grupper, og hver gruppes gennemsnitsfarve bliver et
+   anker. Kraniet får altså sin rampe fra sig selv — knoglemørkt til lysest —
+   som metallerne fik deres fra handoff'ens tabel. */
+async function derivRampe(t) {
+  const fg = t.lag.find(l => l[1] === 'fg');
+  const img = await hent(t.sti + fg[0] + '.png');
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  const c = cv.getContext('2d');
+  c.drawImage(img, 0, 0);
+  const d = c.getImageData(0, 0, cv.width, cv.height).data;
+  const px = [];
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue;
+    px.push([luma(d[i], d[i + 1], d[i + 2]), d[i], d[i + 1], d[i + 2]]);
+  }
+  px.sort((a, b) => a[0] - b[0]);
+  const ud = [];
+  for (let k = 0; k < 5; k++) {
+    const lo = Math.floor(px.length * k / 5), hi = Math.floor(px.length * (k + 1) / 5);
+    let r = 0, g = 0, b = 0;
+    for (let i = lo; i < hi; i++) { r += px[i][1]; g += px[i][2]; b += px[i][3]; }
+    const n = Math.max(1, hi - lo);
+    ud.push('#' + [r / n, g / n, b / n].map(v => Math.round(v).toString(16).padStart(2, '0')).join(''));
+  }
+  return ud;
 }
 
 /* Gør kunsten klodset UDEN at røre mønterne.
@@ -348,13 +394,15 @@ function hent(sti) {
 }
 
 async function art(tema, mode, toner, hardAlpha, opløsning) {
-  const navne = { 'sack-bg': 'bg', 'sack-bg-b': 'bgB', 'ring-back': 'ringBack', 'sack-fg': 'fg', 'ring-front': 'ringFront' };
-  const ud = { shade: 'assets/shade.png' };   // skyggelaget røres ikke: det er
-  let farver = 0;                             // en blød 30%-overlejring
-  for (const lag of LAG) {
-    const img = await hent('assets/' + tema + '/' + lag + '.png');
+  const t = THEMES[tema];
+  const ud = {};
+  // Skyggelaget røres ikke: det er en blød 30%-overlejring. Kraniet har intet.
+  if (t.shade) ud.shade = t.shade;
+  let farver = 0;
+  for (const [fil, nøgle] of t.lag) {
+    const img = await hent(t.sti + fil + '.png');
     const r = behandl(img, mode, toner, hardAlpha, opløsning);
-    ud[navne[lag]] = r.cv.toDataURL('image/png');
+    ud[nøgle] = r.cv.toDataURL('image/png');
     if (r.farver != null) farver = Math.max(farver, r.farver);
   }
   return { art: ud, farver };
@@ -363,13 +411,15 @@ async function art(tema, mode, toner, hardAlpha, opløsning) {
 /* ── De to sække ─────────────────────────────────────────────────────────── */
 
 function opts(artSæt, pixelSize, canvasId, countId) {
+  const t = THEMES[state.tema];
   return {
     style: 'artsack',
     art: artSæt,
+    geometry: t.geometry,
     coinTones: ['#fff6d6', '#ffe08a', '#f5be3c', '#c6871f', '#7e5212'],
     pixelate: true,
     pixelSize: pixelSize,
-    fillCount: 16,
+    fillCount: t.fillCount,
     coinSamples: window.COIN_SAMPLES,
     flipSample: window.COIN_FLIP,
     spendStyle: 1,
@@ -388,6 +438,15 @@ async function byg() {
   $('#paneA').style.setProperty('--room', t.rum);
   $('#paneB').style.setProperty('--room', t.rum);
 
+  // Kraniets rampe udledes af dets egen kunst, første gang.
+  if (!t.rampe) t.rampe = await derivRampe(t);
+
+  // Kassen hører til motivet, og motoren læser den ved fødslen.
+  for (const id of ['#sackA', '#sackB']) {
+    $(id).style.width = t.box[0] + 'px';
+    $(id).style.height = t.box[1] + 'px';
+  }
+
   // Venstre: altid urørt, som referencen.
   const A = await art(state.tema, 'off', 0, false, 0);
   // Højre: dine indstillinger.
@@ -399,7 +458,7 @@ async function byg() {
   sackB = new window.CoinSack($('#sackB'), opts(B.art, state.pixelSize, '#sackB', '#countB'));
   for (let i = 0; i < state.coins; i++) { sackA.addCoin(); sackB.addCoin(); }
 
-  $('#factsA').textContent = 'kunsten i fuld opløsning · ~400 farver · mønter 2.92 px';
+  $('#factsA').textContent = 'kunsten i fuld opløsning, alle farver · mønter 2.92 px';
   $('#factsB').textContent = 'kunsten i ' + state.artRes + ' klodser · ' +
     (B.farver != null ? B.farver + ' farver' : 'farver urørt') +
     ' · mønter ' + (MØNT_KLODS / state.pixelSize).toFixed(2) + ' px';
@@ -413,8 +472,12 @@ function vis() {
   const cv = $('#sackB');
   const bufBredde = cv.width;
   // Hvor bred kunsten er inde i bufferen — det loft dens egen opløsning skal
-  // under, før klodserne kan ses.
-  const artIBuffer = ART_LOGISK * (bufBredde / LOGISK_BREDDE);
+  // under, før klodserne kan ses. Læses af den levende motor når den findes,
+  // for tallet afhænger af motivets geometri; konstanterne er kun sækkens og
+  // dækker øjeblikket før første bygning.
+  const artIBuffer = sackB
+    ? sackB.geo.img * sackB._artScale * sackB.rs
+    : ART_LOGISK * (bufBredde / LOGISK_BREDDE);
   const klods = artIBuffer / state.artRes;
 
   $('#resNote').textContent = klods < 1
@@ -456,9 +519,10 @@ function opskriftTekst() {
   const t = THEMES[state.tema];
   const linjer = [
     '// Coin sack v2 — pixel-lab',
+    '// Motiv: ' + t.navn + '  (geometry: \'' + t.geometry + '\', fillCount: ' + t.fillCount + ')',
     '',
-    '// Sækken alene:',
-    '//   kunsten skaleres ned til ' + state.artRes + ' klodser',
+    '// Kunsten alene:',
+    '//   skaleres ned til ' + state.artRes + ' klodser',
   ];
   if (state.mode === 'off') {
     linjer.push('// Farverne røres ikke — kunsten bruges som den er.');
@@ -538,6 +602,12 @@ document.querySelectorAll('[data-add]').forEach(b =>
     const n = Number(b.dataset.add);
     for (let i = 0; i < n; i++) { state.coins++; sackA.addCoin(); sackB.addCoin(); }
   }));
+
+// Op til randen — og randen er motivets: sækken rummer 16, kraniet 30.
+$('[data-fill]').addEventListener('click', () => {
+  const mangler = Math.max(0, THEMES[state.tema].fillCount - state.coins);
+  for (let i = 0; i < mangler; i++) { state.coins++; sackA.addCoin(); sackB.addCoin(); }
+});
 
 $('[data-reset]').addEventListener('click', () => {
   state.coins = 0;

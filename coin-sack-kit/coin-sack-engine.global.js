@@ -10,12 +10,15 @@
 // Gendan med kommandoen i README.md hvis du retter i originalen.
 (function () {
 // Coin-in-sack physics + gold render engine.
-// Taken as-is from the design handoff in "UI/Fra claude design/Mønt falder i
-// sæk 4". Its README says the engine is framework-agnostic and can be reused
-// directly — it only wants a canvas and Matter.js — so it is, unedited beyond
-// this note. The sack's interior geometry is measured into the ART constant
-// below; re-measure it if the art is ever re-exported. Styles other than
-// 'artsack' are earlier exploration and unused here.
+// From the design handoff in "UI/Mønt falder i sæk 4", with ONE structural
+// change made in this kit: the artwork's interior geometry is a parameter
+// rather than a constant. The "Crowned Skull Coins" export (NEW COIN BAG/)
+// came back with the sack's ART constant replaced by the skull's — proof that
+// every new artwork would otherwise need its own fork of the engine. Both
+// geometries now live in GEOMETRIES below; pick one with opts.geometry
+// ('sack' is the default, so existing callers are untouched), or pass a
+// custom object. The skull export also added fgAlpha and the sideRevealR
+// clip, both merged. Styles other than 'artsack' are earlier exploration.
 //
 // What each revision added, all of it opt-in and off by default:
 //   spendCoins(n)  flies the top n coins out with a pixel ka-ching, 1–4.
@@ -47,10 +50,44 @@ const GOLD = {
   edge: '#5E3D0E',
 };
 
-// measured geometry of the user's sack art (1024x1024 image px)
-const ART = {
-  bx0: 94, bx1: 933, cxImg: 514, mouthY: 494, floorImgY: 896, botImgY: 929,
-  prof: [[494, 336], [528, 331], [561, 341], [595, 354], [628, 370], [662, 391], [695, 401], [728, 411], [762, 411], [795, 420], [829, 411], [862, 395], [896, 342]],
+// Measured geometry of each artwork the engine can pour coins into. One of
+// these is picked with opts.geometry ('sack' is the default), or a caller can
+// pass its own object with the same fields — this is the "re-measure if the
+// art changes" the handoff kept talking about, made into a parameter.
+//
+//   img        the art file's square size in px
+//   bx0..botImgY, prof   interior: mouth, floor, and half-width per image-y
+//   bodyHalf   half-width used for coin sizing
+//   fit        how the art meets the canvas: the sack fills 96% of the WIDTH
+//              (art and canvas are both portrait), the skull 102% of the
+//              HEIGHT (the crown would poke out of a width fit)
+//   rDiv       coin radius = bodyHalf*scale / rDiv — smaller = bigger coins
+//   sideRevealR  extra clip width in coin radii, so coins spilling out beside
+//              the art stay visible before being culled (the skull wants
+//              this; the sack's art covers its own spill)
+const GEOMETRIES = {
+  // the burlap sack from the handoffs (1024x1024)
+  sack: {
+    img: 1024,
+    bx0: 94, bx1: 933, cxImg: 514, mouthY: 494, floorImgY: 896, botImgY: 929,
+    bodyHalf: 420,
+    prof: [[494, 336], [528, 331], [561, 341], [595, 354], [628, 370], [662, 391], [695, 401], [728, 411], [762, 411], [795, 420], [829, 411], [862, 395], [896, 342]],
+    fit: { by: 'width', factor: 0.96 },
+    rDiv: 6.4,
+    sideRevealR: 0,
+  },
+  // the crowned skull from "NEW COIN BAG" (1254x1254): coins live in the open
+  // cranium, the face and crown sit in front and frame them. Geometry lifted
+  // from the Claude Design export's engine, where it replaced the sack's.
+  skull: {
+    img: 1254,
+    bx0: 176, bx1: 1090, cxImg: 632, mouthY: 330, floorImgY: 960, botImgY: 1107,
+    bodyHalf: 400,
+    prof: [[330, 430], [430, 420], [540, 406], [660, 394], [770, 382], [860, 372], [920, 363], [960, 355]],
+    fit: { by: 'height', factor: 1.02 },
+    rDiv: 5.8,
+    sideRevealR: 4,
+  },
 };
 
 function rr(ctx, x, y, w, h, r) {
@@ -93,6 +130,13 @@ class CoinSack {
     this.pixelSize = opts.pixelSize || 2.4;
     this.coinTones = opts.coinTones || null;
     this.coinPixel = opts.coinPixel || null;
+    // which artwork's interior the coins fall into — a name or a full object
+    this.geo = typeof opts.geometry === 'string'
+      ? (GEOMETRIES[opts.geometry] || GEOMETRIES.sack)
+      : (opts.geometry || GEOMETRIES.sack);
+    // foreground opacity, from the skull export: lets coins show through the
+    // front layer while dialling art in. 1 = as shipped.
+    this.fgAlpha = opts.fgAlpha != null ? opts.fgAlpha : 1;
     this.onCount = opts.onCount || (() => {});
     this.onFull = opts.onFull || (() => {});
     this.coins = [];
@@ -871,19 +915,22 @@ class CoinSack {
   }
 
   _layoutArt() {
-    const A = ART, s = (this.W * 0.96) / (A.bx1 - A.bx0);
+    const A = this.geo;
+    const s = A.fit.by === 'height'
+      ? (this.H * A.fit.factor) / A.img
+      : (this.W * A.fit.factor) / (A.bx1 - A.bx0);
     this._artScale = s;
     this._artOffX = this.W / 2 - A.cxImg * s;
     this._artOffY = (this.H - 14) - A.botImgY * s;
     this.cx = this.W / 2;
     this.rimY = this._artOffY + A.mouthY * s;
     this.floorY = this._artOffY + A.floorImgY * s;
-    this.iw = 2 * 420 * s;
-    this.r = Math.max(3, Math.min(30, (420 * s) / 6.4));
+    this.iw = 2 * A.bodyHalf * s;
+    this.r = Math.max(3, Math.min(30, (A.bodyHalf * s) / A.rDiv));
   }
 
   _artHalf(ty) {
-    const A = ART, imgY = A.mouthY + ty * (A.floorImgY - A.mouthY), p = A.prof;
+    const A = this.geo, imgY = A.mouthY + ty * (A.floorImgY - A.mouthY), p = A.prof;
     let h = p[0][1];
     for (let i = 0; i < p.length - 1; i++) {
       if (imgY >= p[i][0] && imgY <= p[i + 1][0]) { const f = (imgY - p[i][0]) / (p[i + 1][0] - p[i][0]); h = p[i][1] + (p[i + 1][1] - p[i][1]) * f; break; }
@@ -893,17 +940,20 @@ class CoinSack {
   }
 
   _artBack(ctx, g, fill) {
-    const s = this._artScale, ox = this._artOffX, oy = this._artOffY, sz = 1024 * s;
+    const s = this._artScale, ox = this._artOffX, oy = this._artOffY, sz = this.geo.img * s;
     if (this._imgBg && this._imgBg.naturalWidth) ctx.drawImage(this._imgBg, ox, oy, sz, sz);
     if (this._imgBgB && this._imgBgB.naturalWidth) ctx.drawImage(this._imgBgB, ox, oy, sz, sz);
     if (this._imgRingBack && this._imgRingBack.naturalWidth) ctx.drawImage(this._imgRingBack, ox, oy, sz, sz);
   }
 
   _artFront(ctx, g, fill) {
-    const s = this._artScale, ox = this._artOffX, oy = this._artOffY, sz = 1024 * s;
+    const s = this._artScale, ox = this._artOffX, oy = this._artOffY, sz = this.geo.img * s;
     // dark body layer over the coins (30%): coins deep in the sack read recessed/darker
     if (this._imgShade && this._imgShade.naturalWidth) { ctx.save(); ctx.globalAlpha = 0.3; ctx.drawImage(this._imgShade, ox, oy, sz, sz); ctx.restore(); }
-    if (this._imgFg && this._imgFg.naturalWidth) ctx.drawImage(this._imgFg, ox, oy, sz, sz);
+    if (this._imgFg && this._imgFg.naturalWidth) {
+      if (this.fgAlpha < 1) { ctx.save(); ctx.globalAlpha = this.fgAlpha; ctx.drawImage(this._imgFg, ox, oy, sz, sz); ctx.restore(); }
+      else ctx.drawImage(this._imgFg, ox, oy, sz, sz);
+    }
     if (this._imgRingFront && this._imgRingFront.naturalWidth) ctx.drawImage(this._imgRingFront, ox, oy, sz, sz);
   }
 
@@ -928,13 +978,16 @@ class CoinSack {
   // coins piled near the mouth are never cropped at the top.
   _coinClipPath(ctx) {
     const N = 16, Hs = this.floorY - this.rimY, inset = 4, up = this.r * 3.2;
-    const neck = this._sackHalf(0) + inset;
+    // extra side reveal (skull): coins spilling beside the art stay visible
+    // until they're culled, instead of vanishing at its silhouette
+    const mx = this.r * (this.geo.sideRevealR || 0);
+    const neck = this._sackHalf(0) + inset + mx;
     ctx.beginPath();
     ctx.moveTo(this.cx - neck, this.rimY - up);
-    for (let i = 0; i <= N; i++) { const ty = i / N; ctx.lineTo(this.cx - (this._sackHalf(ty) + inset), this.rimY + ty * Hs); }
+    for (let i = 0; i <= N; i++) { const ty = i / N; ctx.lineTo(this.cx - (this._sackHalf(ty) + inset + mx), this.rimY + ty * Hs); }
     ctx.quadraticCurveTo(this.cx - this._sackHalf(1) * 0.5, this.floorY + this.r * 0.6, this.cx, this.floorY + this.r * 0.6);
-    ctx.quadraticCurveTo(this.cx + this._sackHalf(1) * 0.5, this.floorY + this.r * 0.6, this.cx + this._sackHalf(1) + inset, this.floorY);
-    for (let i = N; i >= 0; i--) { const ty = i / N; ctx.lineTo(this.cx + (this._sackHalf(ty) + inset), this.rimY + ty * Hs); }
+    ctx.quadraticCurveTo(this.cx + this._sackHalf(1) * 0.5, this.floorY + this.r * 0.6, this.cx + this._sackHalf(1) + inset + mx, this.floorY);
+    for (let i = N; i >= 0; i--) { const ty = i / N; ctx.lineTo(this.cx + (this._sackHalf(ty) + inset + mx), this.rimY + ty * Hs); }
     ctx.lineTo(this.cx + neck, this.rimY - up);
     ctx.closePath();
   }
@@ -1161,5 +1214,8 @@ class CoinSack {
     ctx.restore();
   }
 }
+
+// The measured artworks, findable from outside: CoinSack.GEOMETRIES.skull etc.
+CoinSack.GEOMETRIES = GEOMETRIES;
 window.CoinSack = CoinSack;
 })();

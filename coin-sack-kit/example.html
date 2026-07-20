@@ -157,11 +157,15 @@ code {
 
 const $ = s => document.querySelector(s);
 
-// De tre farver. Rummet bag sækken skifter med, så man kan se at den passer.
+// De tre sække plus kraniet. Rummet bag skifter med, så man kan se at det
+// passer. Kassen er den hvert motiv er designet i: sækken står i højformat,
+// kraniet i liggende 560×380 med luft til at mønter vælter ud ved siden af —
+// det er dét sideRevealR-klippet i motoren er til.
 const THEMES = [
-  { id: '14b', name: 'Messing', room: '#100d07' },
-  { id: '14c', name: 'Kobber', room: '#120b08' },
-  { id: '14f', name: 'Stål', room: '#0f1113' },
+  { id: '14b', name: 'Messing', room: '#100d07', box: [150, 265] },
+  { id: '14c', name: 'Kobber', room: '#120b08', box: [150, 265] },
+  { id: '14f', name: 'Stål', room: '#0f1113', box: [150, 265] },
+  { id: 'skull', name: 'Kranie', room: '#16110a', box: [560, 380] },
 ];
 
 let theme = '14b';
@@ -171,25 +175,31 @@ let sack = null;
 /* ═══ DET HER ER HELE INTEGRATIONEN ═══════════════════════════════════════ */
 
 function options(id) {
-  return {
-    style: 'artsack',
+  // Kraniet: to lag, egen geometri, og 30 mønter — kraniet er større end
+  // sækken. Kunsten er urørt fra designet; der er ingen bagt udgave endnu.
+  const art = id === 'skull'
+    ? { bg: 'assets/skull/back.png', fg: 'assets/skull/skull.png' }
     // Den bagte kunst: 58×58, fem toner af temaets metal, hårde kanter. Den
     // urørte ligger stadig i assets/<id>/ — se README om at bage igen.
-    art: {
-      bg: 'assets/pixel/' + id + '/sack-bg.png',
-      bgB: 'assets/pixel/' + id + '/sack-bg-b.png',
-      ringBack: 'assets/pixel/' + id + '/ring-back.png',
-      fg: 'assets/pixel/' + id + '/sack-fg.png',
-      ringFront: 'assets/pixel/' + id + '/ring-front.png',
-      shade: 'assets/shade.png',
-    },
+    : {
+        bg: 'assets/pixel/' + id + '/sack-bg.png',
+        bgB: 'assets/pixel/' + id + '/sack-bg-b.png',
+        ringBack: 'assets/pixel/' + id + '/ring-back.png',
+        fg: 'assets/pixel/' + id + '/sack-fg.png',
+        ringFront: 'assets/pixel/' + id + '/ring-front.png',
+        shade: 'assets/shade.png',
+      };
+  return {
+    style: 'artsack',
+    art: art,
+    geometry: id === 'skull' ? 'skull' : 'sack',
     coinTones: ['#fff6d6', '#ffe08a', '#f5be3c', '#c6871f', '#7e5212'],
     pixelate: true,
     // 1.6 frem for 2.4: en større buffer, så møntklodsen får 4.38 bufferpixels
     // i stedet for 2.92 og bliver skarpere. Sækkens klodsethed kommer fra
     // kunstens egne 58 pixels og er uafhængig af det her tal.
     pixelSize: 1.6,
-    fillCount: 16,
+    fillCount: id === 'skull' ? 30 : 16,
 
     // I dit spil: peg på filerne og server dem over http.
     //   coinSamples: Array.from({length: 14}, (_, i) => 'assets/coin/coin-' + (i+1) + '.wav'),
@@ -218,7 +228,13 @@ function options(id) {
 
 function build() {
   if (sack) { try { sack.destroy(); } catch (e) {} }
-  sack = new window.CoinSack($('#sack'), options(theme));
+  // Kassen hører til motivet, og motoren læser den ved fødslen — så den
+  // sættes før konstruktionen, ellers måler _resize den gamle.
+  const t = THEMES.find(x => x.id === theme);
+  const cv = $('#sack');
+  cv.style.width = t.box[0] + 'px';
+  cv.style.height = t.box[1] + 'px';
+  sack = new window.CoinSack(cv, options(theme));
   // Mønter tjent før den her sæk fandtes hører stadig til i den.
   for (let i = 0; i < coins; i++) sack.addCoin();
 }

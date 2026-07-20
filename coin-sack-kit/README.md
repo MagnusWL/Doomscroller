@@ -220,6 +220,40 @@ Dem der betyder noget. Resten kan stå som i eksemplet.
 }
 ```
 
+## Kraniet
+
+**"Crowned Skull Coins"** — mønterne falder ned i et kronet kranies åbne
+hjerneskal. Designet i Claude Design oven på den her pakke; kilden ligger i
+`NEW COIN BAG/Cranium coinbag/` i repoet, kunsten er kopieret til
+`assets/skull/` (to lag: `back.png` bag mønterne, `skull.png` foran).
+
+Vælges med **`geometry: 'skull'`** i options — det er den ene strukturelle
+ændring pakken har lavet i motoren. Eksporten kom tilbage med sækkens
+`ART`-konstant *erstattet* af kraniets, hvilket beviste at hvert nyt motiv
+ellers ville kræve sin egen kopi af 1100 linjer motor. Nu er geometrien en
+parameter: `sack` er standard (eksisterende kald urørte), `skull` vælges til,
+og `CoinSack.GEOMETRIES` viser hvad der findes. En hel geometri kan også gives
+som objekt — det er handoff'ens "re-measure if the art changes", gjort til et
+argument.
+
+Kraniet adskiller sig fra sækken på tre målbare måder:
+
+- **Liggende kasse.** Designet i 560×380 og skalerer efter *højden* (kronen
+  ville stikke ud af en breddetilpasning). Sækken står i højformat og skalerer
+  efter bredden.
+- **`sideRevealR: 4`** — klippefeltet er fire møntradier bredere end kraniets
+  silhuet, så mønter der vælter ud ved siden af kan ses falde før de ryddes
+  væk. Sækkens kunst dækker selv sit spild; dens tal er 0.
+- **`fillCount: 30`** — hjerneskallen rummer flere mønter end sækken.
+
+Eksporten tilføjede også **`fgAlpha`** (forgrundens gennemsigtighed, til at se
+mønterne bag kunsten mens man justerer) — flettet ind, standard 1.
+
+I pixel-lab'et er kraniet et motiv på linje med de tre sække. Det har ingen
+ramme at matche, så dets rampe **udledes af dets egen kunst**: de synlige
+pixels deles i fem lysheds-grupper, og hver gruppes gennemsnit bliver et anker
+— knoglemørkt til lysest, målt til `rgb(17,16,12)` → `rgb(195,185,174)`.
+
 ## Farverne
 
 Tre tonede sæt i `assets/`: **14b** messing, **14c** kobber, **14f** stål. Kun
@@ -260,9 +294,13 @@ Retter du i `coin-sack-engine.js`, så gendan den anden:
 
 ## Hvor det kommer fra
 
-Motoren og kunsten er fra design-handoff'en `Mønt falder i sæk 4`, via
-Doomscroller-projektet, commit `91727aa` (17. juli 2026). Motoren er uændret
-fra handoff'en.
+Motoren og sækkens kunst er fra design-handoff'en `Mønt falder i sæk 4`, via
+Doomscroller-projektet, commit `91727aa` (17. juli 2026). Kraniet er fra
+Claude Design-eksporten i `NEW COIN BAG/Cranium coinbag/` (20. juli 2026).
+
+Motoren afviger fra handoff'en på ét struktureret punkt: kunstens geometri er
+en parameter (`opts.geometry`) i stedet for en konstant, plus `fgAlpha` og
+`sideRevealR` fra kranie-eksporten. Alt andet er urørt, og `sack` er standard.
 
 Det her er en **kopi**, taget ud for at rejse videre. Retter du noget her,
 kommer det ikke tilbage til Doomscroller af sig selv, og omvendt.
