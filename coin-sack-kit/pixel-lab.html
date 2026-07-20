@@ -433,6 +433,31 @@ function opts(artSæt, pixelSize, canvasId, countId) {
 
 let sackA = null, sackB = null;
 
+/* Referencen skal ses, ikke simuleres. To Matter-motorer side om side har vist
+   sig at kunne hænge browserrudens tegner — så når venstre sides mønter er
+   faldet til ro, stoppes dens motor, og lærredet beholder sit sidste billede.
+   Nye mønter genstarter den kort og fryser igen. */
+let frysA = null;
+let artA = null;   // referencens kunst, gemt så den kan vækkes efter en frysning
+function frysSnart() {
+  if (frysA) clearTimeout(frysA);
+  frysA = setTimeout(() => {
+    if (sackA) { try { sackA.destroy(); } catch (e) {} }
+    frysA = null;
+  }, 3500);
+}
+
+/* Bygger (eller genopliver) referencen og sætter frysningen i gang. Efter en
+   frysning kan der ikke lægges mønter i — så et nyt indskud bygger den om, og
+   alle mønter falder forfra. Referencens job er kunsten, ikke bunken. */
+function buildA() {
+  if (frysA) { clearTimeout(frysA); frysA = null; }
+  if (sackA) { try { sackA.destroy(); } catch (e) {} }
+  sackA = new window.CoinSack($('#sackA'), opts(artA, 2.4, '#sackA', '#countA'));
+  for (let i = 0; i < state.coins; i++) sackA.addCoin();
+  frysSnart();
+}
+
 async function byg() {
   const t = THEMES[state.tema];
   $('#paneA').style.setProperty('--room', t.rum);
@@ -454,9 +479,10 @@ async function byg() {
 
   if (sackA) try { sackA.destroy(); } catch (e) {}
   if (sackB) try { sackB.destroy(); } catch (e) {}
-  sackA = new window.CoinSack($('#sackA'), opts(A.art, 2.4, '#sackA', '#countA'));
+  artA = A.art;
+  buildA();
   sackB = new window.CoinSack($('#sackB'), opts(B.art, state.pixelSize, '#sackB', '#countB'));
-  for (let i = 0; i < state.coins; i++) { sackA.addCoin(); sackB.addCoin(); }
+  for (let i = 0; i < state.coins; i++) sackB.addCoin();
 
   $('#factsA').textContent = 'kunsten i fuld opløsning, alle farver · mønter 2.92 px';
   $('#factsB').textContent = 'kunsten i ' + state.artRes + ' klodser · ' +
@@ -597,21 +623,25 @@ for (const id of Object.keys(THEMES)) {
   $('#themes').appendChild(b);
 }
 
+// Nye mønter: B får dem direkte; en frossen reference bygges om og indhenter.
+function læg(n) {
+  for (let i = 0; i < n; i++) { state.coins++; if (sackB) sackB.addCoin(); }
+  if (!sackA || sackA.destroyed) buildA();
+  else { for (let i = 0; i < n; i++) sackA.addCoin(); frysSnart(); }
+}
+
 document.querySelectorAll('[data-add]').forEach(b =>
-  b.addEventListener('click', () => {
-    const n = Number(b.dataset.add);
-    for (let i = 0; i < n; i++) { state.coins++; sackA.addCoin(); sackB.addCoin(); }
-  }));
+  b.addEventListener('click', () => læg(Number(b.dataset.add))));
 
 // Op til randen — og randen er motivets: sækken rummer 16, kraniet 30.
-$('[data-fill]').addEventListener('click', () => {
-  const mangler = Math.max(0, THEMES[state.tema].fillCount - state.coins);
-  for (let i = 0; i < mangler; i++) { state.coins++; sackA.addCoin(); sackB.addCoin(); }
-});
+$('[data-fill]').addEventListener('click', () =>
+  læg(Math.max(0, THEMES[state.tema].fillCount - state.coins)));
 
 $('[data-reset]').addEventListener('click', () => {
   state.coins = 0;
-  sackA.reset(); sackB.reset();
+  if (sackB) sackB.reset();
+  if (!sackA || sackA.destroyed) buildA();
+  else { sackA.reset(); frysSnart(); }
 });
 
 $('#copy').addEventListener('click', async () => {
@@ -625,7 +655,7 @@ $('#copy').addEventListener('click', async () => {
 ['pointerdown', 'touchend', 'keydown'].forEach(e =>
   window.addEventListener(e, () => {
     for (const s of [sackA, sackB]) {
-      if (!s) continue;
+      if (!s || s.destroyed) continue;   // en frossen reference skal ikke have lyd
       s._ensureAudio();
       if (s.audio && s.audio.state !== 'running') s.audio.resume();
     }
