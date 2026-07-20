@@ -228,6 +228,7 @@ Dem der betyder noget. Resten kan stå som i eksemplet.
   coinSamples: [...],     // 14 wav-stier — ét tilfældigt klip per mønt
   flipSample: '...',      // mp3 der spiller når mønten fødes
   spendStyle: 1,          // ka-ching ved køb, 1–4 er nære varianter
+  groundShadow: true,     // den bløde ellipse under beholderen; false fjerner
   soundOn: true,
 
   tempo: 0.85,            // faldhastighed
